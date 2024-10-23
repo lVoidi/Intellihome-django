@@ -25,7 +25,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <div class="container-fluid">
-        <a class="navbar-brand" href="">IntelliHome</a>
+        <a class="navbar-brand" href="{% url 'home' %}">IntelliHome</a>
         <button
           class="navbar-toggler"
           type="button"
@@ -40,19 +40,20 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
             <li class="nav-item">
-              <a class="nav-link" href="">Inicio</a>
+              <a class="nav-link" href="{% url 'home' %}">Inicio</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" href="">Propiedades</a>
             </li>
             {% if user.is_authenticated %}
             <li class="nav-item">
-              <a class="nav-link" href="">Perfil</a>
+              <a class="nav-link" href="{% if user.is_staff %}/admin/{% else %}{% endif %}">Perfil</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href=""
-                >Cerrar sesión</a
-              >
+              <form method="post" action="{% url 'accounts:logout' %}" class="nav-link">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-link nav-link p-0">Cerrar sesión</button>
+              </form>
             </li>
             {% else %}
             <li class="nav-item">
