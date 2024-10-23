@@ -15,8 +15,9 @@
       rel="stylesheet"
     />
 
-    <link rel="icon" href="{% static 'icons/intellihome.ico' %}" />
+    
     {% load static %}
+    <link rel="icon" href="{% static 'icons/intellihome.ico' %}" />
     <link href="{% static 'css/base.css' %}" rel="stylesheet" />
     {% block head %}{% endblock %}
   </head>
@@ -24,7 +25,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <div class="container-fluid">
-        <a class="navbar-brand" href="{% url 'home' %}">IntelliHome</a>
+        <a class="navbar-brand" href="">IntelliHome</a>
         <button
           class="navbar-toggler"
           type="button"
@@ -39,17 +40,17 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'home' %}">Inicio</a>
+              <a class="nav-link" href="">Inicio</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'houses:list' %}">Casas</a>
+              <a class="nav-link" href="">Propiedades</a>
             </li>
             {% if user.is_authenticated %}
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'accounts:profile' %}">Perfil</a>
+              <a class="nav-link" href="">Perfil</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'accounts:logout' %}"
+              <a class="nav-link" href=""
                 >Cerrar sesión</a
               >
             </li>
