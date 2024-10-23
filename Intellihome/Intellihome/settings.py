@@ -57,7 +57,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'accounts.middleware.SystemStatusMiddleware',
+    'accounts.middleware.AdminPasswordCheckMiddleware',
 ]
+
 
 ROOT_URLCONF = 'Intellihome.urls'
 

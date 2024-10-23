@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 # Create your models here.
 
@@ -29,3 +30,11 @@ class SystemStatus(models.Model):
     def save(self, *args, **kwargs):
         if not SystemStatus.objects.exists() or self.pk:
             super().save(*args, **kwargs)
+
+class AdminPasswordStatus(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    last_password_change = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        verbose_name = "Estado de Contraseña de Admin"
+        verbose_name_plural = "Estados de Contraseña de Admin"
