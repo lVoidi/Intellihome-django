@@ -38,3 +38,29 @@ class AdminPasswordStatus(models.Model):
     class Meta:
         verbose_name = "Estado de Contraseña de Admin"
         verbose_name_plural = "Estados de Contraseña de Admin"
+
+class TipoTransporte(models.Model):
+    nombre = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.nombre
+
+class EstiloCasa(models.Model):
+    nombre = models.CharField(max_length=50)
+    descripcion = models.TextField()
+
+    def __str__(self):
+        return self.nombre
+
+class PerfilUsuario(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    fecha_nacimiento = models.DateField()
+    foto_perfil = models.ImageField(upload_to='perfiles/', null=True, blank=True)
+    incluir_pago = models.BooleanField(default=False)
+    estilos_casa = models.ManyToManyField(EstiloCasa)
+    tipos_transporte = models.ManyToManyField(TipoTransporte)
+    email_verificado = models.BooleanField(default=False)
+    codigo_verificacion = models.CharField(max_length=6, null=True, blank=True)
+
+    def __str__(self):
+        return self.user.username

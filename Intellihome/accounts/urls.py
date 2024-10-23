@@ -7,6 +7,8 @@ app_name = 'accounts'
 
 urlpatterns = [
     path('register/', views.register, name='register'),
+    path('verify-code/', views.verify_code, name='verify_code'),
+    path('set-password/', views.set_password, name='set_password'),
     path('login/', auth_views.LoginView.as_view(
         template_name='accounts/login.html',
         authentication_form=CustomAuthenticationForm,

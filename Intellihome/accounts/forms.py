@@ -3,23 +3,66 @@ from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.contrib.auth import authenticate
+import random
+import string
+from .models import PerfilUsuario, EstiloCasa, TipoTransporte
+from .utils import enviar_mensaje
 
-class UserRegistrationForm(UserCreationForm):
+class UserRegistrationForm(forms.ModelForm):
     email = forms.EmailField(required=True)
     first_name = forms.CharField(required=True, label='Nombre')
     last_name = forms.CharField(required=True, label='Apellido')
+    fecha_nacimiento = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label='Fecha de nacimiento'
+    )
+    foto_perfil = forms.ImageField(required=False)
+    incluir_pago = forms.BooleanField(required=False, label='¿Desea incluir forma de pago?')
+    estilos_casa = forms.ModelMultipleChoiceField(
+        queryset=EstiloCasa.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=True
+    )
+    tipos_transporte = forms.ModelMultipleChoiceField(
+        queryset=TipoTransporte.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=True
+    )
 
     class Meta:
         model = User
-        fields = ('username', 'first_name', 'last_name', 'email', 'password1', 'password2')
+        fields = ('username', 'first_name', 'last_name', 'email',
+                 'fecha_nacimiento', 'foto_perfil', 'incluir_pago', 'estilos_casa', 'tipos_transporte')
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email=email).exists():
+            raise ValidationError('Este correo electrónico ya está registrado.')
+        return email
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if User.objects.filter(username=username).exists():
+            raise ValidationError('Este nombre de usuario ya está en uso.')
+        return username
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.email = self.cleaned_data['email']
-        user.first_name = self.cleaned_data['first_name']
-        user.last_name = self.cleaned_data['last_name']
         if commit:
             user.save()
+            codigo = ''.join(random.choices(string.digits, k=6))
+            perfil = PerfilUsuario.objects.create(
+                user=user,
+                fecha_nacimiento=self.cleaned_data['fecha_nacimiento'],
+                foto_perfil=self.cleaned_data.get('foto_perfil'),
+                incluir_pago=self.cleaned_data['incluir_pago'],
+                codigo_verificacion=codigo
+            )
+            perfil.estilos_casa.set(self.cleaned_data['estilos_casa'])
+            perfil.tipos_transporte.set(self.cleaned_data['tipos_transporte'])
+            
+            # Enviar correo de verificación
+            enviar_mensaje(user.email, codigo)
         return user
 
 class CustomAuthenticationForm(AuthenticationForm):
@@ -48,3 +91,25 @@ class CustomAuthenticationForm(AuthenticationForm):
                 self.confirm_login_allowed(self.user_cache)
 
         return self.cleaned_data
+
+class VerificationCodeForm(forms.Form):
+    codigo = forms.CharField(max_length=6, min_length=6, label='Código de verificación')
+
+class SetPasswordForm(forms.Form):
+    password1 = forms.CharField(
+        label='Contraseña',
+        widget=forms.PasswordInput,
+        help_text='La contraseña debe tener al menos 8 caracteres'
+    )
+    password2 = forms.CharField(
+        label='Confirmar contraseña',
+        widget=forms.PasswordInput
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get('password1')
+        password2 = cleaned_data.get('password2')
+        if password1 and password2 and password1 != password2:
+            raise ValidationError('Las contraseñas no coinciden')
+        return cleaned_data
