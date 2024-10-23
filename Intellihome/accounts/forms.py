@@ -99,17 +99,43 @@ class SetPasswordForm(forms.Form):
     password1 = forms.CharField(
         label='Contraseña',
         widget=forms.PasswordInput,
-        help_text='La contraseña debe tener al menos 8 caracteres'
+        help_text='''La contraseña debe tener:
+        • Mínimo 7 caracteres
+        • Al menos una mayúscula
+        • Al menos un símbolo especial
+        • Al menos un número
+        • Al menos una minúscula'''
     )
     password2 = forms.CharField(
         label='Confirmar contraseña',
         widget=forms.PasswordInput
     )
 
+    def clean_password1(self):
+        password = self.cleaned_data.get('password1')
+        if len(password) < 7:
+            raise ValidationError('La contraseña debe tener al menos 7 caracteres.')
+        
+        if not any(c.isupper() for c in password):
+            raise ValidationError('La contraseña debe contener al menos una mayúscula.')
+        
+        if not any(c.islower() for c in password):
+            raise ValidationError('La contraseña debe contener al menos una minúscula.')
+        
+        if not any(c.isdigit() for c in password):
+            raise ValidationError('La contraseña debe contener al menos un número.')
+        
+        if not any(not c.isalnum() for c in password):
+            raise ValidationError('La contraseña debe contener al menos un símbolo especial.')
+        
+        return password
+
     def clean(self):
         cleaned_data = super().clean()
         password1 = cleaned_data.get('password1')
         password2 = cleaned_data.get('password2')
-        if password1 and password2 and password1 != password2:
-            raise ValidationError('Las contraseñas no coinciden')
+        
+        if password1 and password2:
+            if password1 != password2:
+                raise ValidationError('Las contraseñas no coinciden')
         return cleaned_data

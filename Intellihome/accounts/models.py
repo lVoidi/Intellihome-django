@@ -61,6 +61,9 @@ class PerfilUsuario(models.Model):
     tipos_transporte = models.ManyToManyField(TipoTransporte)
     email_verificado = models.BooleanField(default=False)
     codigo_verificacion = models.CharField(max_length=6, null=True, blank=True)
+    codigo_enviado_en = models.DateTimeField(auto_now_add=True)
+    intentos_verificacion = models.IntegerField(default=0)
+    ultimo_codigo_enviado = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.user.username

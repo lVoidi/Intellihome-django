@@ -11,7 +11,15 @@
                     <h2 class="text-center">Verificar Código</h2>
                 </div>
                 <div class="card-body">
+                    {% if messages %}
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
                     <p class="text-center">Por favor, ingrese el código de verificación enviado a su correo electrónico.</p>
+                    <p class="text-center text-danger" id="timer">Tiempo restante: 2:00</p>
                     <form method="post" novalidate>
                         {% csrf_token %}
                         {% for field in form %}
@@ -34,4 +42,22 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Temporizador
+    let timeLeft = {{ segundos_restantes }};
+    const timerElement = document.getElementById('timer');
+    
+    const timer = setInterval(() => {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerElement.textContent = `Tiempo restante: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            window.location.href = '{% url "home" %}'; 
+        }
+        timeLeft--;
+    }, 1000);
+</script>
 {% endblock %}
