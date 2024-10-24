@@ -8,7 +8,7 @@ import random
 from django.core.validators import validate_email
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
-from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm, CustomAuthenticationForm
+from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm, CustomAuthenticationForm, ForgotPasswordForm
 from .models import PerfilUsuario, PromocionAdministrador
 from .utils import enviar_mensaje
 import string
@@ -272,3 +272,89 @@ def redirect_based_on_user_type(user):
         
     except PromocionAdministrador.DoesNotExist:
         return redirect('accounts:user_home')
+
+def forgot_password(request):
+    if request.method == 'POST':
+        form = ForgotPasswordForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            try:
+                user = User.objects.get(email=email)
+                codigo = ''.join(random.choices(string.digits, k=6))
+                request.session['reset_code'] = codigo
+                request.session['reset_email'] = email
+                request.session['code_timestamp'] = timezone.now().isoformat()
+                
+                mensaje = f"""
+                Has solicitado restablecer tu contraseña.
+                Tu código de verificación es: {codigo}
+                Este código expirará en 2 minutos.
+                """
+                enviar_mensaje(email, mensaje)
+                return redirect('accounts:verify_reset_code')
+            except User.DoesNotExist:
+                messages.error(request, 'El correo electrónico no está registrado en el sistema')
+                return redirect('accounts:login')
+    else:
+        form = ForgotPasswordForm()
+    return render(request, 'accounts/forgot_password.html', {'form': form})
+
+def verify_reset_code(request):
+    if 'reset_code' not in request.session:
+        messages.error(request, 'Sesión inválida. Por favor, inicie el proceso nuevamente.')
+        return redirect('accounts:login')
+        
+    if request.method == 'POST':
+        form = VerificationCodeForm(request.POST)
+        if form.is_valid():
+            if form.cleaned_data['codigo'] == request.session['reset_code']:
+                return redirect('accounts:reset_password')
+            else:
+                for key in ['reset_code', 'reset_email', 'code_timestamp']:
+                    request.session.pop(key, None)
+                messages.error(request, 'El código de verificación es incorrecto')
+                return redirect('accounts:login')
+    else:
+        form = VerificationCodeForm()
+    
+    # Verificar tiempo
+    code_timestamp = timezone.datetime.fromisoformat(request.session['code_timestamp'])
+    tiempo_actual = timezone.now()
+    tiempo_limite = code_timestamp + timedelta(minutes=2)
+    segundos_restantes = int((tiempo_limite - tiempo_actual).total_seconds())
+    
+    if segundos_restantes <= 0:
+        # Limpiar la sesión
+        for key in ['reset_code', 'reset_email', 'code_timestamp']:
+            request.session.pop(key, None)
+        messages.error(request, 'El código ha expirado. Por favor, inicie el proceso nuevamente.')
+        return redirect('accounts:login')
+    
+    return render(request, 'accounts/verify_reset_code.html', {
+        'form': form,
+        'segundos_restantes': segundos_restantes
+    })
+
+def reset_password(request):
+    if 'reset_email' not in request.session:
+        messages.error(request, 'Sesión inválida')
+        return redirect('accounts:login')
+        
+    if request.method == 'POST':
+        form = SetPasswordForm(request.POST)
+        if form.is_valid():
+            user = User.objects.get(email=request.session['reset_email'])
+            user.set_password(form.cleaned_data['password1'])
+            user.save()
+            
+            # Limpiar sesión
+            for key in ['reset_code', 'reset_email', 'code_timestamp']:
+                request.session.pop(key, None)
+                
+            messages.success(request, 'Tu contraseña ha sido actualizada exitosamente')
+            return redirect('accounts:login')
+    else:
+        form = SetPasswordForm()
+    
+    return render(request, 'accounts/reset_password.html', {'form': form})
+

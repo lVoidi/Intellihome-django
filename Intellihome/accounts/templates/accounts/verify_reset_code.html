@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Iniciar Sesión - IntelliHome{% endblock %}
+{% block title %}Verificar Código - IntelliHome{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -8,23 +8,14 @@
         <div class="col-md-6">
             <div class="card mt-5">
                 <div class="card-header">
-                    <h2 class="text-center">Iniciar Sesión</h2>
+                    <h2 class="text-center">Verificar Código</h2>
                 </div>
                 <div class="card-body">
-                    {% if messages %}
-                    {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">
-                        {{ message }}
-                    </div>
-                    {% endfor %}
-                    {% endif %}
+                    <p class="text-center">Se ha enviado un código de verificación a tu correo electrónico.</p>
+                    <p class="text-center">Tiempo restante: <span id="timer">{{ segundos_restantes }}</span> segundos</p>
+                    
                     <form method="post" novalidate>
                         {% csrf_token %}
-                        {% if form.non_field_errors %}
-                        <div class="alert alert-danger">
-                            {{ form.non_field_errors }}
-                        </div>
-                        {% endif %}
                         {% for field in form %}
                         <div class="mb-3">
                             <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
@@ -37,8 +28,7 @@
                         </div>
                         {% endfor %}
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
-                            <a href="{% url 'accounts:forgot_password' %}" class="btn btn-link text-center">¿Olvidaste tu contraseña?</a>
+                            <button type="submit" class="btn btn-primary">Verificar Código</button>
                         </div>
                     </form>
                 </div>
@@ -46,4 +36,20 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Contador regresivo
+    let timeLeft = {{ segundos_restantes }};
+    const timerElement = document.getElementById('timer');
+    
+    const countdown = setInterval(() => {
+        timeLeft--;
+        timerElement.textContent = timeLeft;
+        
+        if (timeLeft <= 0) {
+            clearInterval(countdown);
+            window.location.href = "{% url 'accounts:login' %}";
+        }
+    }, 1000);
+</script>
 {% endblock %}

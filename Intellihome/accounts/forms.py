@@ -139,3 +139,18 @@ class SetPasswordForm(forms.Form):
             if password1 != password2:
                 raise ValidationError('Las contraseñas no coinciden')
         return cleaned_data
+
+class ForgotPasswordForm(forms.Form):
+    email = forms.EmailField(
+        label='Correo Electrónico',
+        widget=forms.EmailInput(attrs={'class': 'form-control'})
+    )
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        try:
+            user = User.objects.get(email=email)
+            return email
+        except User.DoesNotExist:
+            # No indicamos si el correo existe o no
+            return email

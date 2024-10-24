@@ -18,4 +18,7 @@ urlpatterns = [
     path('admin-home/', views.admin_home, name='admin_home'),
     path('staff-home/', views.staff_home, name='staff_home'),
     path('user-home/', views.user_home, name='user_home'),
+    path('forgot-password/', views.forgot_password, name='forgot_password'),
+    path('verify-reset-code/', views.verify_reset_code, name='verify_reset_code'),
+    path('reset-password/', views.reset_password, name='reset_password'),
 ]
