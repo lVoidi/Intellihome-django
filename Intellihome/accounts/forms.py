@@ -154,3 +154,50 @@ class ForgotPasswordForm(forms.Form):
         except User.DoesNotExist:
             # No indicamos si el correo existe o no
             return email
+
+class UserProfileEditForm(forms.ModelForm):
+    email = forms.EmailField(required=True)
+    first_name = forms.CharField(required=True, label='Nombre')
+    last_name = forms.CharField(required=True, label='Apellido')
+    username = forms.CharField(required=True, label='Usuario (alias)')
+    fecha_nacimiento = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label='Fecha de nacimiento'
+    )
+    foto_perfil = forms.ImageField(required=False)
+    incluir_pago = forms.BooleanField(required=False, label='¿Desea incluir forma de pago?')
+    estilos_casa = forms.ModelMultipleChoiceField(
+        queryset=EstiloCasa.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=True
+    )
+    tipos_transporte = forms.ModelMultipleChoiceField(
+        queryset=TipoTransporte.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=True
+    )
+
+    class Meta:
+        model = PerfilUsuario
+        fields = ('username', 'first_name', 'last_name', 'email',
+                 'fecha_nacimiento', 'foto_perfil', 'incluir_pago', 'estilos_casa', 'tipos_transporte')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.user:
+            self.fields['username'].initial = self.instance.user.username
+            self.fields['first_name'].initial = self.instance.user.first_name
+            self.fields['last_name'].initial = self.instance.user.last_name
+            self.fields['email'].initial = self.instance.user.email
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.exclude(id=self.instance.user.id).filter(email=email).exists():
+            raise ValidationError('Este correo electrónico ya está registrado.')
+        return email
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if User.objects.exclude(id=self.instance.user.id).filter(username=username).exists():
+            raise ValidationError('Este nombre de usuario ya está en uso.')
+        return username

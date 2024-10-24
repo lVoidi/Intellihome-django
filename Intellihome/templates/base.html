@@ -23,49 +23,49 @@
   </head>
   <body class="d-flex flex-column min-vh-100">
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-      <div class="container-fluid">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container">
         <a class="navbar-brand" href="{% url 'home' %}">IntelliHome</a>
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
+          <ul class="navbar-nav me-auto">
             <li class="nav-item">
               <a class="nav-link" href="{% url 'home' %}">Inicio</a>
             </li>
-            <li class="nav-item">
-              <a class="nav-link" href="">Propiedades</a>
-            </li>
             {% if user.is_authenticated %}
-            <li class="nav-item">
-              <a class="nav-link" href="{% if user.is_staff %}/admin/{% else %}{% endif %}">Perfil</a>
-            </li>
-            <li class="nav-item">
-              <form method="post" action="{% url 'accounts:logout' %}" class="nav-link">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-link nav-link p-0">Cerrar sesión</button>
-              </form>
-            </li>
+              <li class="nav-item">
+                {% if not user.is_superuser %}
+                    <a class="nav-link" href="{% url 'accounts:edit_profile' %}">Editar Perfil</a>
+                {% endif %}
+              </li>
+              <li class="nav-item">
+                {% if user.is_superuser %}
+                  <a class="nav-link" href="/admin/">Panel de control</a>
+                {% elif user.is_staff %}
+                  <a class="nav-link" href="/admin/">Panel de administración</a>
+                {% else %}
+                  <a class="nav-link" href="{% url 'accounts:user_home' %}">Perfil</a>
+                {% endif %}
+              </li>
+            {% endif %}
+          </ul>
+          <ul class="navbar-nav">
+            {% if user.is_authenticated %}
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'home' %}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Cerrar Sesión</a>
+                <form id="logout-form" action="{% url 'accounts:logout' %}" method="POST" style="display: none;">
+                  {% csrf_token %}
+                </form>
+              </li>
             {% else %}
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'accounts:login' %}"
-                >Iniciar sesión</a
-              >
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'accounts:register' %}"
-                >Registrarse</a
-              >
-            </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'accounts:login' %}">Iniciar Sesión</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'accounts:register' %}">Registrarse</a>
+              </li>
             {% endif %}
           </ul>
         </div>

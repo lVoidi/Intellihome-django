@@ -8,7 +8,7 @@ import random
 from django.core.validators import validate_email
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
-from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm, CustomAuthenticationForm, ForgotPasswordForm
+from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm, CustomAuthenticationForm, ForgotPasswordForm, UserProfileEditForm
 from .models import PerfilUsuario, PromocionAdministrador
 from .utils import enviar_mensaje
 import string
@@ -17,6 +17,7 @@ from datetime import timedelta
 from PIL import Image
 import io
 import base64
+from django.contrib.auth.decorators import login_required
 
 # Create your views here.
 
@@ -358,3 +359,36 @@ def reset_password(request):
     
     return render(request, 'accounts/reset_password.html', {'form': form})
 
+@login_required
+def edit_profile(request):
+    try:
+        perfil = request.user.perfilusuario
+        if request.method == 'POST':
+            form = UserProfileEditForm(request.POST, request.FILES, instance=perfil)
+            if form.is_valid():
+                # Guardar cambios del usuario
+                user = request.user
+                user.username = form.cleaned_data['username']
+                user.email = form.cleaned_data['email']
+                user.first_name = form.cleaned_data['first_name']
+                user.last_name = form.cleaned_data['last_name']
+                user.save()
+                
+                # Guardar cambios del perfil
+                perfil = form.save(commit=False)
+                if 'foto_perfil' in request.FILES:
+                    perfil.foto_perfil = request.FILES['foto_perfil']
+                perfil.save()
+                
+                # Guardar relaciones many-to-many
+                form.save_m2m()
+                
+                messages.success(request, 'Perfil actualizado exitosamente')
+                return redirect('home')
+        else:
+            form = UserProfileEditForm(instance=perfil)
+        
+        return render(request, 'accounts/edit_profile.html', {'form': form})
+    except User.perfilusuario.RelatedObjectDoesNotExist:
+        messages.error(request, 'Los datos del administrador no se pueden modificar')
+        return redirect('home')
