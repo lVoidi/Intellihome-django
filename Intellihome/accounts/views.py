@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.contrib.auth import login, authenticate  
 from django.contrib.auth.models import User
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
@@ -7,7 +8,7 @@ import random
 from django.core.validators import validate_email
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
-from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm
+from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm, CustomAuthenticationForm
 from .models import PerfilUsuario, PromocionAdministrador
 from .utils import enviar_mensaje
 import string
@@ -202,20 +203,72 @@ def confirmar_promocion(request, codigo=None):
 
 def home(request):
     if request.user.is_authenticated:
-        # Verificar si es la primera vez que el usuario inicia sesión como admin
-        if request.user.is_staff:
-            try:
-                promocion = PromocionAdministrador.objects.filter(
-                    usuario=request.user,
-                    estado='aceptada'
-                ).latest('fecha_solicitud')
-                
-                # Verificar si es el primer inicio de sesión después de la promoción
-                if not request.session.get('promocion_notificada'):
-                    messages.success(request, '¡Bienvenido! Has sido promovido a administrador.')
-                    request.session['promocion_notificada'] = True
-                    
-            except PromocionAdministrador.DoesNotExist:
-                pass
-    
+        if request.user.is_superuser:
+            return redirect('accounts:admin_home')
+        elif request.user.is_staff:
+            return redirect('accounts:staff_home')
+        else:
+            return redirect('accounts:user_home')
     return render(request, 'home.html')
+
+def admin_home(request):
+    if not request.user.is_superuser:
+        return redirect('home')
+    context = {
+        'titulo': 'Panel de Administración Principal'
+    }
+    return render(request, 'accounts/admin_home.html', context)
+
+def staff_home(request):
+    if not request.user.is_staff or request.user.is_superuser:
+        return redirect('home')
+    context = {
+        'titulo': 'Panel de Subadministrador',
+        'mensaje_bienvenida': '¡Bienvenido Subadministrador!'
+    }
+    return render(request, 'accounts/staff_home.html', context)
+
+def user_home(request):
+    if request.user.is_staff or request.user.is_superuser:
+        return redirect('home')
+    context = {
+        'titulo': 'Mi Portal de Usuario'
+    }
+    return render(request, 'accounts/user_home.html', context)
+
+def custom_login(request):
+    if request.user.is_authenticated:
+        return redirect_based_on_user_type(request.user)
+        
+    if request.method == 'POST':
+        form = CustomAuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            login(request, user)
+            return redirect_based_on_user_type(user)
+    else:
+        form = CustomAuthenticationForm()
+    
+    return render(request, 'accounts/login.html', {'form': form})
+
+def redirect_based_on_user_type(user):
+    try:
+        if user.is_superuser:
+            return redirect('accounts:admin_home')
+            
+        if user.is_staff:
+            promocion = PromocionAdministrador.objects.filter(
+                usuario=user,
+                estado='aceptada'
+            ).latest('fecha_solicitud')
+            return redirect('accounts:staff_home')
+            
+        revocado = PromocionAdministrador.objects.filter(
+            usuario=user,
+            codigo_confirmacion='REVOKED'
+        ).exists()
+        
+        return redirect('accounts:user_home')
+        
+    except PromocionAdministrador.DoesNotExist:
+        return redirect('accounts:user_home')

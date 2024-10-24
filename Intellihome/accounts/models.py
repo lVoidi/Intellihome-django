@@ -68,6 +68,21 @@ class PerfilUsuario(models.Model):
     def __str__(self):
         return self.user.username
 
+    def get_user_status(self):
+        if self.user.is_superuser:
+            return 'Administrador Principal'
+        elif self.user.is_staff:
+            try:
+                promocion = PromocionAdministrador.objects.filter(
+                    usuario=self.user,
+                    estado='aceptada'
+                ).latest('fecha_solicitud')
+                return 'Administrador Promovido'
+            except PromocionAdministrador.DoesNotExist:
+                if self.user.is_staff:
+                    return 'Administrador Promovido'
+        return 'Usuario Normal'
+
 class PromocionAdministrador(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='promociones')
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
