@@ -8,11 +8,14 @@ from django.core.validators import validate_email
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm
-from .models import PerfilUsuario
+from .models import PerfilUsuario, PromocionAdministrador
 from .utils import enviar_mensaje
 import string
 from django.utils import timezone
 from datetime import timedelta
+from PIL import Image
+import io
+import base64
 
 # Create your views here.
 
@@ -33,8 +36,23 @@ def register(request):
             }
             
             if 'foto_perfil' in request.FILES:
-                # Manejar la foto de perfil temporalmente si es necesario
-                pass
+                foto = request.FILES['foto_perfil']
+                import base64
+                import io
+                from PIL import Image
+
+                # Procesar la imagen
+                img = Image.open(foto)
+                img_io = io.BytesIO()
+                img.save(img_io, format='JPEG')
+                img_io.seek(0)
+                foto_base64 = base64.b64encode(img_io.getvalue()).decode('utf-8')
+                
+                request.session['pending_photo'] = {
+                    'name': foto.name,
+                    'content': foto_base64,
+                    'content_type': 'image/jpeg'
+                }
             
             request.session['pending_registration'] = user_data
             codigo = ''.join(random.choices(string.digits, k=6))
@@ -107,18 +125,30 @@ def set_password(request):
                 is_active=True
             )
             
+            # Crear el perfil primero
             perfil = PerfilUsuario.objects.create(
                 user=user,
                 fecha_nacimiento=timezone.datetime.fromisoformat(registration_data['fecha_nacimiento']).date(),
                 incluir_pago=registration_data['incluir_pago'],
                 email_verificado=True
             )
+
+            # Procesar y guardar la foto si existe
+            foto_data = request.session.get('pending_photo')
+            if foto_data:
+                import base64
+                from django.core.files.base import ContentFile
+                
+                # Decodificar la foto y guardarla
+                foto_content = base64.b64decode(foto_data['content'])
+                foto_file = ContentFile(foto_content, name=foto_data['name'])
+                perfil.foto_perfil.save(foto_data['name'], foto_file, save=True)
             
             perfil.estilos_casa.set(registration_data['estilos_casa'])
             perfil.tipos_transporte.set(registration_data['tipos_transporte'])
             
             # Limpiar datos de la sesión
-            for key in ['pending_registration', 'verification_code', 'code_timestamp', 'verification_attempts']:
+            for key in ['pending_registration', 'verification_code', 'code_timestamp', 'verification_attempts', 'pending_photo']:
                 request.session.pop(key, None)
                 
             messages.success(request, 'Registro completado exitosamente')
@@ -127,3 +157,65 @@ def set_password(request):
         form = SetPasswordForm()
     
     return render(request, 'accounts/set_password.html', {'form': form})
+
+def confirmar_promocion(request, codigo=None):
+    # Si no hay usuario autenticado, redirigir al login
+    if not request.user.is_authenticated:
+        messages.error(request, 'Debes iniciar sesión para confirmar la promoción.')
+        return redirect('accounts:login')
+    
+    try:
+        promocion = PromocionAdministrador.objects.filter(
+            codigo_confirmacion=codigo,
+            estado='pendiente'
+        ).latest('fecha_solicitud')
+        
+        if request.method == 'POST':
+            accion = request.POST.get('accion')
+            if accion == 'aceptar':
+                # Marcar todas las promociones anteriores como rechazadas
+                PromocionAdministrador.objects.filter(
+                    usuario=promocion.usuario,
+                    estado='pendiente'
+                ).exclude(id=promocion.id).update(estado='rechazada')
+                
+                promocion.estado = 'aceptada'
+                promocion.save()
+                
+                usuario = promocion.usuario
+                usuario.is_staff = True
+                usuario.save()
+                
+                messages.success(request, 'Has aceptado la promoción. Podrás ver tu nuevo rol cuando inicies sesión.')
+            elif accion == 'rechazar':
+                promocion.estado = 'rechazada'
+                promocion.save()
+                messages.info(request, 'Has rechazado la promoción a administrador.')
+            
+            return redirect('home')
+            
+        return render(request, 'accounts/confirmar_promocion.html', {'promocion': promocion})
+        
+    except PromocionAdministrador.DoesNotExist:
+        messages.error(request, 'Código de confirmación inválido o ya procesado')
+        return redirect('home')
+
+def home(request):
+    if request.user.is_authenticated:
+        # Verificar si es la primera vez que el usuario inicia sesión como admin
+        if request.user.is_staff:
+            try:
+                promocion = PromocionAdministrador.objects.filter(
+                    usuario=request.user,
+                    estado='aceptada'
+                ).latest('fecha_solicitud')
+                
+                # Verificar si es el primer inicio de sesión después de la promoción
+                if not request.session.get('promocion_notificada'):
+                    messages.success(request, '¡Bienvenido! Has sido promovido a administrador.')
+                    request.session['promocion_notificada'] = True
+                    
+            except PromocionAdministrador.DoesNotExist:
+                pass
+    
+    return render(request, 'home.html')

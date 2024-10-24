@@ -18,4 +18,5 @@ urlpatterns = [
         next_page='home',
         http_method_names=['get', 'post']  # Permitir GET y POST
     ), name='logout'),
+    path('confirmar-promocion/<str:codigo>/', views.confirmar_promocion, name='confirmar_promocion'),
 ]

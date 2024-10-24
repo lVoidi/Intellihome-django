@@ -67,3 +67,16 @@ class PerfilUsuario(models.Model):
 
     def __str__(self):
         return self.user.username
+
+class PromocionAdministrador(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='promociones')
+    fecha_solicitud = models.DateTimeField(auto_now_add=True)
+    codigo_confirmacion = models.CharField(max_length=6)
+    estado = models.CharField(max_length=20, choices=[
+        ('pendiente', 'Pendiente'),
+        ('aceptada', 'Aceptada'),
+        ('rechazada', 'Rechazada')
+    ], default='pendiente')
+    
+    def __str__(self):
+        return f"Promoción de {self.usuario.username}"
