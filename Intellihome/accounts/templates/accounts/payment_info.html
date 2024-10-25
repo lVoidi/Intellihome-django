@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Registro - IntelliHome{% endblock %}
+{% block title %}Información de Pago - IntelliHome{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -8,10 +8,10 @@
         <div class="col-md-6">
             <div class="card mt-5">
                 <div class="card-header">
-                    <h2 class="text-center">Registro de Usuario</h2>
+                    <h2 class="text-center">Información de Pago</h2>
                 </div>
                 <div class="card-body">
-                    <form method="post" enctype="multipart/form-data" novalidate>
+                    <form method="post" novalidate>
                         {% csrf_token %}
                         {% for field in form %}
                         <div class="mb-3">
@@ -24,8 +24,9 @@
                             {% endif %}
                         </div>
                         {% endfor %}
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">Registrarse</button>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Continuar</button>
+                            <a href="{% url 'accounts:register' %}" class="btn btn-secondary">Cancelar</a>
                         </div>
                     </form>
                 </div>

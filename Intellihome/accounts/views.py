@@ -8,9 +8,9 @@ import random
 from django.core.validators import validate_email
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
-from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm, CustomAuthenticationForm, ForgotPasswordForm, UserProfileEditForm
+from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm, CustomAuthenticationForm, ForgotPasswordForm, UserProfileEditForm, PaymentInfoForm
 from .models import PerfilUsuario, PromocionAdministrador
-from .utils import enviar_mensaje
+from .utils import enviar_mensaje, generar_codigo_verificacion
 import string
 from django.utils import timezone
 from datetime import timedelta
@@ -25,7 +25,6 @@ def register(request):
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST, request.FILES)
         if form.is_valid():
-           
             user_data = {
                 'username': form.cleaned_data['username'],
                 'email': form.cleaned_data['email'],
@@ -37,6 +36,7 @@ def register(request):
                 'tipos_transporte': [tipo.id for tipo in form.cleaned_data['tipos_transporte']],
             }
             
+            # Guardar foto si existe
             if 'foto_perfil' in request.FILES:
                 foto = request.FILES['foto_perfil']
                 import base64
@@ -57,14 +57,18 @@ def register(request):
                 }
             
             request.session['pending_registration'] = user_data
-            codigo = ''.join(random.choices(string.digits, k=6))
-            request.session['verification_code'] = codigo
-            request.session['code_timestamp'] = timezone.now().isoformat()
             
-            enviar_mensaje(form.cleaned_data['email'], codigo)
-            return redirect('accounts:verify_code')
+            if form.cleaned_data['incluir_pago']:
+                return redirect('accounts:payment_info')
+            else:
+                codigo = ''.join(random.choices(string.digits, k=6))
+                request.session['verification_code'] = codigo
+                request.session['code_timestamp'] = timezone.now().isoformat()
+                enviar_mensaje(user_data['email'], codigo)
+                return redirect('accounts:verify_code')
     else:
         form = UserRegistrationForm()
+    
     return render(request, 'accounts/register.html', {'form': form})
 
 def verify_code(request):
@@ -111,13 +115,14 @@ def verify_code(request):
 
 def set_password(request):
     registration_data = request.session.get('pending_registration')
+    payment_data = request.session.get('payment_info')
+    
     if not registration_data:
         return redirect('accounts:register')
     
     if request.method == 'POST':
         form = SetPasswordForm(request.POST)
         if form.is_valid():
-            
             user = User.objects.create_user(
                 username=registration_data['username'],
                 email=registration_data['email'],
@@ -127,14 +132,21 @@ def set_password(request):
                 is_active=True
             )
             
-            # Crear el perfil primero
             perfil = PerfilUsuario.objects.create(
                 user=user,
                 fecha_nacimiento=timezone.datetime.fromisoformat(registration_data['fecha_nacimiento']).date(),
                 incluir_pago=registration_data['incluir_pago'],
                 email_verificado=True
             )
-
+            
+            if payment_data:
+                perfil.nombre_tarjetahabiente = payment_data['nombre_tarjetahabiente']
+                perfil.numero_tarjeta = payment_data['numero_tarjeta']
+                perfil.fecha_validez = timezone.datetime.fromisoformat(payment_data['fecha_validez']).date()
+                perfil.numero_verificador = payment_data['numero_verificador']
+                perfil.marca_tarjeta = payment_data['marca_tarjeta']
+                perfil.save()
+            
             # Procesar y guardar la foto si existe
             foto_data = request.session.get('pending_photo')
             if foto_data:
@@ -392,3 +404,32 @@ def edit_profile(request):
     except User.perfilusuario.RelatedObjectDoesNotExist:
         messages.error(request, 'Los datos del administrador no se pueden modificar')
         return redirect('home')
+
+def payment_info(request):
+    if 'pending_registration' not in request.session:
+        return redirect('accounts:register')
+        
+    if request.method == 'POST':
+        form = PaymentInfoForm(request.POST)
+        if form.is_valid():
+            # Guardar información de pago en la sesión
+            payment_data = {
+                'nombre_tarjetahabiente': form.cleaned_data['nombre_tarjetahabiente'],
+                'numero_tarjeta': form.cleaned_data['numero_tarjeta'],
+                'fecha_validez': form.cleaned_data['fecha_validez'].isoformat(),
+                'numero_verificador': form.cleaned_data['numero_verificador'],
+                'marca_tarjeta': form.marca_tarjeta
+            }
+            request.session['payment_info'] = payment_data
+            
+            # Generar y enviar código de verificación
+            codigo = ''.join(random.choices(string.digits, k=6))
+            request.session['verification_code'] = codigo
+            request.session['code_timestamp'] = timezone.now().isoformat()
+            enviar_mensaje(request.session['pending_registration']['email'], codigo)
+            return redirect('accounts:verify_code')
+    else:
+        form = PaymentInfoForm()
+    
+    return render(request, 'accounts/payment_info.html', {'form': form})
+

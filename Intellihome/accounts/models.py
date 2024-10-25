@@ -64,6 +64,12 @@ class PerfilUsuario(models.Model):
     codigo_enviado_en = models.DateTimeField(auto_now_add=True)
     intentos_verificacion = models.IntegerField(default=0)
     ultimo_codigo_enviado = models.DateTimeField(null=True, blank=True)
+    # Nuevos campos para el pago
+    nombre_tarjetahabiente = models.CharField(max_length=100, blank=True, null=True)
+    numero_tarjeta = models.CharField(max_length=16, blank=True, null=True)
+    fecha_validez = models.DateField(blank=True, null=True)
+    numero_verificador = models.CharField(max_length=4, blank=True, null=True)
+    marca_tarjeta = models.CharField(max_length=20, blank=True, null=True)
 
     def __str__(self):
         return self.user.username

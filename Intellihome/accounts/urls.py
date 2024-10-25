@@ -22,4 +22,5 @@ urlpatterns = [
     path('verify-reset-code/', views.verify_reset_code, name='verify_reset_code'),
     path('reset-password/', views.reset_password, name='reset_password'),
     path('edit-profile/', views.edit_profile, name='edit_profile'),
+    path('payment-info/', views.payment_info, name='payment_info'),
 ]

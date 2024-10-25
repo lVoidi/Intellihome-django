@@ -1,5 +1,7 @@
 from email.message import EmailMessage
 import smtplib
+import random
+import string
 
 def enviar_mensaje(email, codigo, message=None):
     sender_email = "intellihome.playitaiguana@gmail.com"
@@ -38,3 +40,6 @@ def enviar_mensaje(email, codigo, message=None):
             server.send_message(msg)
     except Exception as e:
         print(f"Error al enviar el correo: {e}")
+
+def generar_codigo_verificacion():
+    return ''.join(random.choices(string.digits, k=6))

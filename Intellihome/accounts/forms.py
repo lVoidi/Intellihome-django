@@ -61,7 +61,6 @@ class UserRegistrationForm(forms.ModelForm):
             perfil.estilos_casa.set(self.cleaned_data['estilos_casa'])
             perfil.tipos_transporte.set(self.cleaned_data['tipos_transporte'])
             
-            # Enviar correo de verificación
             enviar_mensaje(user.email, codigo)
         return user
 
@@ -201,3 +200,39 @@ class UserProfileEditForm(forms.ModelForm):
         if User.objects.exclude(id=self.instance.user.id).filter(username=username).exists():
             raise ValidationError('Este nombre de usuario ya está en uso.')
         return username
+
+class PaymentInfoForm(forms.Form):
+    nombre_tarjetahabiente = forms.CharField(required=True, label='Nombre del Tarjetahabiente')
+    numero_tarjeta = forms.CharField(
+        required=True, 
+        max_length=16, 
+        min_length=16, 
+        label='Número de Tarjeta',
+        widget=forms.TextInput(attrs={'pattern': '[0-9]*'})
+    )
+    fecha_validez = forms.DateField(
+        required=True,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        label='Fecha de Validez'
+    )
+    numero_verificador = forms.CharField(
+        required=True, 
+        max_length=4, 
+        min_length=4, 
+        label='Número Verificador',
+        widget=forms.TextInput(attrs={'pattern': '[0-9]*'})
+    )
+
+    def clean_numero_tarjeta(self):
+        numero = self.cleaned_data['numero_tarjeta']
+        if not numero.isdigit():
+            raise ValidationError('El número de tarjeta debe contener solo dígitos')
+        
+        primer_digito = numero[0]
+        marcas_validas = {'1': 'Visca', '2': 'MasterChef', '3': 'AmericanCity', '5': 'TicaPay'}
+        
+        if primer_digito not in marcas_validas:
+            raise ValidationError('Número de tarjeta inválido. El primer dígito debe ser 1, 2, 3 o 5')
+        
+        self.marca_tarjeta = marcas_validas[primer_digito]
+        return numero
