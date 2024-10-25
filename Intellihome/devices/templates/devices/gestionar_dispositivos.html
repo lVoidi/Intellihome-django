@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestionar Dispositivos - {{ casa }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <h2>Gestionar Dispositivos - {{ casa }}</h2>
+            <a href="{% url 'devices:lista_casas_dispositivos' %}" class="btn btn-secondary">
+                Volver a la lista de casas
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Lista de dispositivos existentes -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Dispositivos Actuales</h5>
+                </div>
+                <div class="card-body">
+                    {% if dispositivos %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Tipo</th>
+                                    <th>Ubicación</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dispositivo in dispositivos %}
+                                <tr>
+                                    <td>{{ dispositivo.nombre }}</td>
+                                    <td>{{ dispositivo.tipo }}</td>
+                                    <td>{{ dispositivo.ubicacion }}</td>
+                                    <td>
+                                        <span class="badge {% if dispositivo.estado %}bg-success{% else %}bg-danger{% endif %}">
+                                            {{ dispositivo.estado|yesno:"Activo,Inactivo" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <form method="post" action="{% url 'devices:cambiar_estado' dispositivo.id %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-primary">
+                                                {% if dispositivo.estado %}Desactivar{% else %}Activar{% endif %}
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn btn-sm btn-info" onclick="probarDispositivo({{ dispositivo.id }})">
+                                            Probar
+                                        </button>
+                                        <form method="post" action="{% url 'devices:eliminar_dispositivo' dispositivo.id %}" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar este dispositivo?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center mb-0">No hay dispositivos registrados para esta casa.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario para agregar nuevo dispositivo -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Agregar Nuevo Dispositivo</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">
+                                {{ field.label }}
+                            </label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <small class="text-muted">{{ field.help_text }}</small>
+                            {% endif %}
+                            {% if field.errors %}
+                            <div class="alert alert-danger">
+                                {{ field.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">Agregar Dispositivo</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function probarDispositivo(dispositivoId) {
+        alert('Función de prueba para el dispositivo ' + dispositivoId + ' (pendiente de implementar)');
+        // Aquí irá la petición POST a 192.168.0.4:8080 cuando esté disponible
+    }
+</script>
+{% endblock %}

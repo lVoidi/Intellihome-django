@@ -62,3 +62,4 @@ def eliminar_casa(request, casa_id):
         messages.success(request, 'Casa eliminada exitosamente')
         return redirect('properties:lista_casas')
     return render(request, 'properties/confirmar_eliminar_casa.html', {'casa': casa})
+

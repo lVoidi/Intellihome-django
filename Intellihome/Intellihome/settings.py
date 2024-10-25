@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'payments',
     'reports',
     'properties.apps.PropertiesConfig',
+    'devices.apps.DevicesConfig',
 ]
 
 
