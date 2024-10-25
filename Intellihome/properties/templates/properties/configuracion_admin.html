@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuración - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    {% if messages %}
+    <div class="row mb-4">
+        <div class="col-md-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <div class="col-md-12">
+            <h2 class="mb-4">Panel de Configuración</h2>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Gestión de Propiedades</h5>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'properties:agregar_casa' %}" class="btn btn-primary">
+                            Agregar Nueva Casa
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

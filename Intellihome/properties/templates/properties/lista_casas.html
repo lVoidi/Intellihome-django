@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Casas Registradas - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Casas Registradas</h2>
+    
+    <div class="row">
+        {% for casa in casas %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                {% if casa.fotocasa_set.first %}
+                <img src="{{ casa.fotocasa_set.first.imagen.url }}" class="card-img-top" alt="Foto de la casa" style="height: 200px; object-fit: cover;">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">Casa {{ casa.id }} - {{ casa.estilo.nombre }}</h5>
+                    <p class="card-text">
+                        <strong>Capacidad:</strong> {{ casa.capacidad }} personas<br>
+                        <strong>Habitaciones:</strong> {{ casa.habitaciones }}<br>
+                        <strong>Baños:</strong> {{ casa.banos }}
+                    </p>
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'properties:detalle_casa' casa.id %}" class="btn btn-primary">Más información</a>
+                        <a href="{% url 'properties:eliminar_casa' casa.id %}" class="btn btn-danger">Eliminar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                No hay casas registradas aún.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

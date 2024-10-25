@@ -16,9 +16,19 @@
     {% endif %}
     
     <div class="row justify-content-center">
-        <div class="col-md-8 text-center">
-            <h1 class="display-4 mb-4">{{ titulo }}</h1>
-            <p class="lead">Gestiona las propiedades y usuarios desde aquí</p>
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="display-4">{{ titulo }}</h1>
+                <div>
+                    <a href="{% url 'properties:configuracion' %}" class="btn btn-primary me-2">
+                        Ventana de Configuración
+                    </a>
+                    <a href="{% url 'properties:lista_casas' %}" class="btn btn-success">
+                        Casas Registradas
+                    </a>
+                </div>
+            </div>
+            <p class="lead text-center">Gestiona las propiedades y usuarios desde aquí</p>
         </div>
     </div>
 </div>

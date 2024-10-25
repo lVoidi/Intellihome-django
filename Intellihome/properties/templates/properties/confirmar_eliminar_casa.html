@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Casa - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3 class="card-title mb-4">¿Estás seguro?</h3>
+                    <p class="card-text">
+                        ¿Realmente deseas eliminar la casa {{ casa.id }} - {{ casa.estilo.nombre }}?
+                        Esta acción no se puede deshacer.
+                    </p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger me-2">Sí, eliminar</button>
+                        <a href="{% url 'properties:lista_casas' %}" class="btn btn-secondary">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
