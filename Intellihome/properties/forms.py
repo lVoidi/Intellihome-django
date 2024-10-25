@@ -46,11 +46,20 @@ class CasaForm(forms.ModelForm):
         widget=forms.Textarea(attrs={'rows': 4}),
         help_text='Ingrese las amenidades separadas por comas (ej: Piscina, Gimnasio, WiFi)'
     )
+    monto = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: 1000.00'
+        }),
+        help_text='Digite el monto mensual, este monto contempla los servicios'
+    )
 
     class Meta:
         model = Casa
         fields = ['estilo', 'capacidad', 'habitaciones', 'banos', 
-                 'amenidades', 'caracteristicas', 'latitud', 'longitud']
+                 'amenidades', 'caracteristicas', 'latitud', 'longitud', 'monto']
 
     def clean_fotos(self):
         fotos = self.files.getlist('fotos')

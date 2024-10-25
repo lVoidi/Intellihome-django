@@ -51,6 +51,26 @@
                 </div>
             </div>
             
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Planes de Pago</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <strong>Mensual con servicios:</strong> 
+                            ${{ casa.monto|floatformat:2 }}
+                        </li>
+                        <li class="mb-2">
+                            <strong>Mensual sin servicios:</strong> 
+                            ${{ casa.monto_sin_servicios|floatformat:2 }}
+                        </li>
+                        <li class="mb-2">
+                            <strong>Diario con servicios:</strong> 
+                            ${{ casa.monto_diario|floatformat:2 }}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Características</h5>
