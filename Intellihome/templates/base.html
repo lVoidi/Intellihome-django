@@ -25,7 +25,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container">
-        <a class="navbar-brand" href="{% url 'home' %}">IntelliHome</a>
+        <a class="navbar-brand" href="{% url 'properties:casas_disponibles' %}">IntelliHome</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span class="navbar-toggler-icon"></span>
         </button>
@@ -41,7 +41,7 @@
                   <a class="nav-link" href="{% url 'accounts:user_home' %}">Inicio</a>
                 {% endif %}
               {% else %}
-                <a class="nav-link" href="{% url 'home' %}">Inicio</a>
+                <a class="nav-link" href="{% url 'properties:casas_disponibles' %}">Inicio</a>
               {% endif %}
             </li>
             {% if user.is_authenticated %}
@@ -64,7 +64,7 @@
           <ul class="navbar-nav">
             {% if user.is_authenticated %}
               <li class="nav-item">
-                <a class="nav-link" href="{% url 'home' %}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Cerrar Sesión</a>
+                <a class="nav-link" href="{% url 'properties:casas_disponibles' %}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Cerrar Sesión</a>
                 <form id="logout-form" action="{% url 'accounts:logout' %}" method="POST" style="display: none;">
                   {% csrf_token %}
                 </form>

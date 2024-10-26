@@ -81,7 +81,11 @@
     </div>
     
     <div class="mt-4">
-        <a href="{% url 'properties:lista_casas' %}" class="btn btn-secondary">Volver a la lista</a>
+        {% if is_owner %}
+            <a href="{% url 'properties:lista_casas' %}" class="btn btn-secondary">Volver a mis casas</a>
+        {% else %}
+            <a href="{% url 'properties:casas_disponibles' %}" class="btn btn-secondary">Volver a casas disponibles</a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

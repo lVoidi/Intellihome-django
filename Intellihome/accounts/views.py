@@ -10,6 +10,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm, CustomAuthenticationForm, ForgotPasswordForm, UserProfileEditForm, PaymentInfoForm
 from .models import PerfilUsuario, PromocionAdministrador
+from properties.models import Casa
 from .utils import enviar_mensaje, generar_codigo_verificacion
 import string
 from django.utils import timezone
@@ -226,7 +227,7 @@ def home(request):
 
 def admin_home(request):
     if not request.user.is_superuser:
-        return redirect('home')
+        return redirect('properties:casas_disponibles')  # Cambiar 'home' por 'properties:casas_disponibles'
     context = {
         'titulo': 'Panel de Administración Principal'
     }
@@ -234,7 +235,7 @@ def admin_home(request):
 
 def staff_home(request):
     if not request.user.is_staff or request.user.is_superuser:
-        return redirect('home')
+        return redirect('properties:casas_disponibles')  # Cambiar 'home' por 'properties:casas_disponibles'
     context = {
         'titulo': 'Panel de Subadministrador',
         'mensaje_bienvenida': '¡Bienvenido Subadministrador!'
@@ -242,12 +243,7 @@ def staff_home(request):
     return render(request, 'accounts/staff_home.html', context)
 
 def user_home(request):
-    if request.user.is_staff or request.user.is_superuser:
-        return redirect('home')
-    context = {
-        'titulo': 'Mi Portal de Usuario'
-    }
-    return render(request, 'accounts/user_home.html', context)
+    return redirect('properties:casas_disponibles')
 
 def custom_login(request):
     if request.user.is_authenticated:
@@ -432,4 +428,12 @@ def payment_info(request):
         form = PaymentInfoForm()
     
     return render(request, 'accounts/payment_info.html', {'form': form})
+
+def index(request):
+    if request.user.is_authenticated:
+        if request.user.is_staff and not request.user.is_superuser:
+            return redirect('accounts:staff_home')
+        elif request.user.is_superuser:
+            return redirect('admin:index')
+    return redirect('properties:casas_disponibles')
 

@@ -11,7 +11,7 @@ urlpatterns = [
     path('set-password/', views.set_password, name='set_password'),
     path('login/', views.custom_login, name='login'),  # Reemplazamos la vista de login
     path('logout/', auth_views.LogoutView.as_view(
-        next_page='home',  # Cambiado de 'accounts:home' a 'home'
+        next_page='properties:casas_disponibles',  # Cambiado de 'accounts:home' a 'home'
         http_method_names=['get', 'post']
     ), name='logout'),
     path('confirmar-promocion/<str:codigo>/', views.confirmar_promocion, name='confirmar_promocion'),

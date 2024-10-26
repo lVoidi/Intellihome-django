@@ -21,9 +21,8 @@ from django.conf.urls.static import static
 from accounts import views as accounts_views
 
 urlpatterns = [
-    path('', accounts_views.home, name='home'),  # Agregar esta línea
+    path('', include('properties.urls')),
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
     path('devices/', include('devices.urls')),
-    path('properties/', include('properties.urls', namespace='properties')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
