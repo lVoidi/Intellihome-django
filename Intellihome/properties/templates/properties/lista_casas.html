@@ -23,6 +23,9 @@
                     <div class="d-flex justify-content-between">
                         <a href="{% url 'properties:detalle_casa' casa.id %}" class="btn btn-primary">Más información</a>
                         <a href="{% url 'properties:eliminar_casa' casa.id %}" class="btn btn-danger">Eliminar</a>
+                        <a href="{% url 'properties:ver_inquilinos' casa.id %}" class="btn btn-info btn-sm">
+                            <i class="fas fa-users"></i> Ver Inquilinos
+                        </a>
                     </div>
                 </div>
             </div>

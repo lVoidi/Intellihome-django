@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Inquilinos - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4">Inquilinos de {{ casa.estilo.nombre }}</h2>
+    
+    {% if reserva_activa %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Inquilino Principal</h5>
+            <div class="d-flex align-items-center mb-3">
+                {% if reserva_activa.usuario.perfilusuario.foto_perfil %}
+                    <img src="{{ reserva_activa.usuario.perfilusuario.foto_perfil.url }}" 
+                         class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                {% endif %}
+                <div>
+                    <h6 class="mb-0">{{ reserva_activa.usuario.get_full_name }}</h6>
+                    <small class="text-muted">@{{ reserva_activa.usuario.username }}</small>
+                </div>
+            </div>
+            
+            <h5 class="card-title mt-4">Usuarios Adicionales</h5>
+            <div class="list-group">
+                {% for usuario in usuarios_adicionales %}
+                <div class="list-group-item d-flex align-items-center">
+                    {% if usuario.perfilusuario.foto_perfil %}
+                        <img src="{{ usuario.perfilusuario.foto_perfil.url }}" 
+                             class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
+                    {% endif %}
+                    <div>
+                        <h6 class="mb-0">{{ usuario.get_full_name }}</h6>
+                        <small class="text-muted">@{{ usuario.username }}</small>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">No hay usuarios adicionales registrados</p>
+                {% endfor %}
+            </div>
+            
+            <div class="mt-4">
+                <p><strong>Fecha de inicio:</strong> {{ reserva_activa.fecha_inicio }}</p>
+                <p><strong>Fecha de fin:</strong> 
+                    {% if reserva_activa.es_indefinida %}
+                        Indefinida
+                    {% else %}
+                        {{ reserva_activa.fecha_fin }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        Esta casa no tiene inquilinos actualmente.
+    </div>
+    {% endif %}
+    
+    <a href="{% url 'properties:lista_casas' %}" class="btn btn-primary">
+        <i class="fas fa-arrow-left"></i> Volver a mis casas
+    </a>
+</div>
+{% endblock %}

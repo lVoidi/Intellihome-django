@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Reservar Casa</h2>
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    {{ form.fecha_inicio.label_tag }}
+                    {{ form.fecha_inicio }}
+                </div>
+                <div class="mb-3" id="fecha_fin_container">
+                    {{ form.fecha_fin.label_tag }}
+                    {{ form.fecha_fin }}
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="es_indefinida" name="es_indefinida">
+                    <label class="form-check-label" for="es_indefinida">Reserva indefinida</label>
+                </div>
+                <button type="submit" class="btn btn-primary">Reservar</button>
+                <a href="{% url 'properties:detalle_casa' casa.id %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fechaInicioInput = document.querySelector('input[name="fecha_inicio"]');
+    const fechaFinInput = document.querySelector('input[name="fecha_fin"]');
+    const esIndefinidaCheckbox = document.getElementById('es_indefinida');
+    const fechaFinContainer = document.getElementById('fecha_fin_container');
+
+    // Establecer fecha inicial por defecto (hoy)
+    const hoy = new Date();
+    fechaInicioInput.valueAsDate = hoy;
+
+    // Establecer fecha final por defecto (un mes después)
+    const unMesDespues = new Date();
+    unMesDespues.setMonth(unMesDespues.getMonth() + 1);
+    fechaFinInput.valueAsDate = unMesDespues;
+
+    esIndefinidaCheckbox.addEventListener('change', function() {
+        fechaFinContainer.style.display = this.checked ? 'none' : 'block';
+        
+        if (this.checked) {
+            // Si es indefinida, establecer fecha fin a un año después
+            const unAnioDespues = new Date();
+            unAnioDespues.setFullYear(unAnioDespues.getFullYear() + 1);
+            fechaFinInput.valueAsDate = unAnioDespues;
+        } else {
+            // Si no es indefinida, volver a un mes después
+            fechaFinInput.valueAsDate = unMesDespues;
+        }
+    });
+});
+</script>
+{% endblock %}

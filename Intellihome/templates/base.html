@@ -22,6 +22,7 @@
     {% block head %}{% endblock %}
   </head>
   <body class="d-flex flex-column min-vh-100">
+
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container">
@@ -45,18 +46,22 @@
               {% endif %}
             </li>
             {% if user.is_authenticated %}
+              <!-- Editar perfil 
               <li class="nav-item">
                 {% if not user.is_superuser %}
                     <a class="nav-link" href="{% url 'accounts:edit_profile' %}">Editar Perfil</a>
                 {% endif %}
               </li>
+              -->
               <li class="nav-item">
                 {% if user.is_superuser %}
                   <a class="nav-link" href="/admin/">Panel de control</a>
                 {% elif user.is_staff %}
-                  <a class="nav-link" href="/admin/">Panel de administración</a>
+                  <a class="nav-link" href="{% url 'accounts:staff_home' %}">
+                    <i class="fas fa-cogs"></i> Panel de Administración
+                  </a>
                 {% else %}
-                  <a class="nav-link" href="{% url 'accounts:user_home' %}">Perfil</a>
+                  <a class="nav-link" href="{% url 'accounts:profile' %}">Perfil</a>
                 {% endif %}
               </li>
             {% endif %}
@@ -82,6 +87,17 @@
       </div>
     </nav>
 
+    <!-- Mensajes -->
+    {% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
     <!-- Contenido principal -->
     <main class="container my-4 flex-grow-1">
       {% block content %} {% endblock %}

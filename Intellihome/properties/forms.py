@@ -1,5 +1,8 @@
+from datetime import timezone
 from django import forms
+from django.utils import timezone  # Cambiado aquí
 from .models import Casa, FotoCasa, ConfiguracionFotos
+from accounts.models import EstiloCasa as Estilo  # Cambiado aquí
 
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
@@ -74,3 +77,27 @@ class CasaForm(forms.ModelForm):
                 f'Debe subir al menos {min_fotos} fotografías'
             )
         return fotos
+
+class RangoFechasForm(forms.Form):
+    fecha_inicio = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha de inicio'
+    )
+    fecha_fin = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Fecha de fin'
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+
+        if fecha_inicio and fecha_fin:
+            if fecha_inicio < timezone.now().date():
+                raise forms.ValidationError('La fecha de inicio no puede ser anterior a hoy')
+            
+            if fecha_fin < fecha_inicio:
+                raise forms.ValidationError('La fecha de fin debe ser posterior a la fecha de inicio')
+
+        return cleaned_data

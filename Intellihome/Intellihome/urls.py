@@ -23,6 +23,6 @@ from accounts import views as accounts_views
 urlpatterns = [
     path('', include('properties.urls')),
     path('admin/', admin.site.urls),
-    path('accounts/', include('accounts.urls')),
+    path('', include('accounts.urls')),  # Asegúrate de que esta línea esté presente
     path('devices/', include('devices.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

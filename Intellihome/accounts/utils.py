@@ -3,7 +3,7 @@ import smtplib
 import random
 import string
 
-def enviar_mensaje(email, codigo, message=None):
+def enviar_mensaje(email, codigo, message=None, subject=None):
     sender_email = "intellihome.playitaiguana@gmail.com"
     sender_password = "feum sttx vaqc peip"
 
@@ -29,7 +29,11 @@ def enviar_mensaje(email, codigo, message=None):
 
     msg.set_content(msg_content)
 
-    msg["Subject"] = "Código de Verificación"
+    if subject:
+        msg["Subject"] = subject
+    else:
+        msg["Subject"] = "Código de Verificación"
+        
     msg["From"] = sender_email
     msg["To"] = email
 

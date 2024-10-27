@@ -55,7 +55,7 @@
         
         if (timeLeft <= 0) {
             clearInterval(timer);
-            window.location.href = '{% url "home" %}'; 
+            window.location.href = '{% url "accounts:login" %}'; 
         }
         timeLeft--;
     }, 1000);

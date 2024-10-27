@@ -1,4 +1,5 @@
-from django.shortcuts import render, redirect
+import decimal
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import login, authenticate  
 from django.contrib.auth.models import User
@@ -9,7 +10,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm, CustomAuthenticationForm, ForgotPasswordForm, UserProfileEditForm, PaymentInfoForm
-from .models import PerfilUsuario, PromocionAdministrador
+from .models import PerfilUsuario, PromocionAdministrador, UsuarioAdicional, MetodoPago
 from properties.models import Casa
 from .utils import enviar_mensaje, generar_codigo_verificacion
 import string
@@ -19,6 +20,11 @@ from PIL import Image
 import io
 import base64
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q  # Add this import at the top with other imports
+from decimal import Decimal
+from properties.models import Reserva
+from django.contrib.admin.views.decorators import staff_member_required
+from django.http import JsonResponse
 
 # Create your views here.
 
@@ -243,7 +249,7 @@ def staff_home(request):
     return render(request, 'accounts/staff_home.html', context)
 
 def user_home(request):
-    return redirect('properties:casas_disponibles')
+    return redirect('accounts:profile')
 
 def custom_login(request):
     if request.user.is_authenticated:
@@ -436,4 +442,308 @@ def index(request):
         elif request.user.is_superuser:
             return redirect('admin:index')
     return redirect('properties:casas_disponibles')
+
+@login_required
+def gestionar_usuarios_adicionales(request):
+    # Obtener usuarios que no son el usuario actual ni superusuarios
+    usuarios_disponibles = User.objects.exclude(
+        Q(id=request.user.id) | 
+        Q(is_superuser=True) |
+        Q(is_staff=True) |
+        Q(es_adicional_de__usuario_principal=request.user)
+    )
+    
+    usuarios_adicionales = UsuarioAdicional.objects.filter(
+        usuario_principal=request.user
+    )
+    
+    context = {
+        'usuarios_disponibles': usuarios_disponibles,
+        'usuarios_adicionales': usuarios_adicionales,
+    }
+    return render(request, 'accounts/gestionar_usuarios_adicionales.html', context)
+
+@login_required
+def agregar_usuario_adicional(request, user_id):
+    usuario_a_agregar = get_object_or_404(User, id=user_id)
+    
+    if request.method == "POST":
+        UsuarioAdicional.objects.create(
+            usuario_principal=request.user,
+            usuario_adicional=usuario_a_agregar
+        )
+        messages.success(request, f"Se ha agregado a {usuario_a_agregar.username} como usuario adicional")
+        return redirect('accounts:gestionar_usuarios_adicionales')
+    
+    return render(request, 'accounts/confirmar_agregar_adicional.html', {
+        'usuario': usuario_a_agregar
+    })
+
+@login_required
+def eliminar_usuario_adicional(request, user_id):
+    relacion = get_object_or_404(UsuarioAdicional, 
+                                usuario_principal=request.user, 
+                                usuario_adicional_id=user_id)
+    
+    if request.method == "POST":
+        relacion.delete()
+        messages.success(request, "Usuario adicional eliminado exitosamente")
+        return redirect('accounts:gestionar_usuarios_adicionales')
+    
+    return render(request, 'accounts/confirmar_eliminar_adicional.html', {
+        'usuario': relacion.usuario_adicional
+    })
+    
+@login_required
+def user_profile(request):
+    try:
+        perfil = request.user.perfilusuario
+        usuarios_adicionales = UsuarioAdicional.objects.filter(usuario_principal=request.user)
+        
+        context = {
+            'user': request.user,
+            'perfil': perfil,
+            'usuarios_adicionales': usuarios_adicionales,
+        }
+        return render(request, 'accounts/user_profile.html', context)
+    except User.perfilusuario.RelatedObjectDoesNotExist:
+        messages.error(request, 'Perfil no encontrado')
+        return redirect('home')
+
+@login_required
+def agregar_saldo(request):
+    if request.method == 'POST':
+        try:
+            monto = Decimal(request.POST.get('monto', 0))
+            cuotas = int(request.POST.get('cuotas', 1))
+            metodo_pago_id = request.POST.get('metodo_pago')
+            
+            if not metodo_pago_id:
+                messages.error(request, "Debe seleccionar un método de pago")
+                return redirect('accounts:user_home')
+            
+            metodo_pago = get_object_or_404(MetodoPago, id=metodo_pago_id, usuario=request.user.perfilusuario)
+            
+            if monto <= 0:
+                messages.error(request, "El monto debe ser mayor a 0")
+                return redirect('accounts:user_home')
+            
+            perfil = request.user.perfilusuario
+            perfil.agregar_saldo(monto)
+            
+            # Intentar enviar el correo con la información del método de pago usado
+            try:
+                subject = 'Factura de Recarga de Saldo - IntelliHome'
+                message = f"""
+                Factura Electrónica
+                -------------------
+                Usuario: {request.user.get_full_name()}
+                Monto: ${monto}
+                Cuotas: {cuotas}
+                Método de Pago: {metodo_pago.marca_tarjeta} terminada en {metodo_pago.numero_tarjeta[-4:]}
+                Fecha: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}
+                """
+                enviar_mensaje(request.user.email, 0, message=message, subject="Factura de Recarga de Saldo - IntelliHome")
+            except Exception as e:
+                print(f"Error enviando correo: {str(e)}")
+            
+            messages.success(request, f"Se han agregado ${monto} a tu saldo")
+            
+        except (ValueError, decimal.InvalidOperation):
+            messages.error(request, "Monto inválido")
+        except Exception as e:
+            messages.error(request, "Ocurrió un error al procesar el pago")
+            print(f"Error en agregar_saldo: {str(e)}")
+    
+    return redirect('accounts:user_home')
+
+@login_required
+def profile(request):
+    print("Entrando a la vista profile")  # Log inicial
+    perfil = request.user.perfilusuario
+    
+    print(f"Buscando reservas para usuario: {request.user.username}")  # Log pre-query
+    reservas_activas = Reserva.objects.filter(
+        usuario=request.user,
+        estado='CONFIRMADA'
+    ).select_related('casa__estilo')
+    
+    # Debug logs
+    print(f"Query completada. Cantidad de reservas: {reservas_activas.count()}")
+    for reserva in reservas_activas:
+        print(f"Reserva encontrada -> ID: {reserva.id}, Estado: {reserva.estado}, Casa: {reserva.casa.estilo.nombre}")
+    
+    context = {
+        'perfil': perfil,
+        'reservas_activas': reservas_activas,
+    }
+    return render(request, 'accounts/user_profile.html', context)
+
+@login_required
+def agregar_metodo_pago(request):
+    if request.method == 'POST':
+        form = PaymentInfoForm(request.POST)
+        if form.is_valid():
+            perfil = request.user.perfilusuario
+            
+            # Si es el primer método de pago, hacerlo principal
+            es_principal = not perfil.metodos_pago.exists()
+            
+            MetodoPago.objects.create(
+                usuario=perfil,
+                nombre_tarjetahabiente=form.cleaned_data['nombre_tarjetahabiente'],
+                numero_tarjeta=form.cleaned_data['numero_tarjeta'],
+                fecha_validez=form.cleaned_data['fecha_validez'],
+                numero_verificador=form.cleaned_data['numero_verificador'],
+                marca_tarjeta=form.marca_tarjeta,
+                es_principal=es_principal
+            )
+            
+            messages.success(request, f"Método de pago agregado exitosamente")
+            return redirect('accounts:user_home')
+        else:
+            messages.error(request, "Por favor, verifica los datos ingresados")
+    
+    return redirect('accounts:user_home')
+
+@login_required
+def establecer_metodo_pago_principal(request, metodo_id):
+    metodo = get_object_or_404(MetodoPago, id=metodo_id, usuario=request.user.perfilusuario)
+    
+    # Quitar el estado principal de todos los métodos
+    MetodoPago.objects.filter(usuario=request.user.perfilusuario).update(es_principal=False)
+    
+    # Establecer el nuevo método principal
+    metodo.es_principal = True
+    metodo.save()
+    
+    messages.success(request, "Método de pago principal actualizado")
+    return redirect('accounts:user_home')
+
+@login_required
+def eliminar_metodo_pago(request, metodo_id):
+    metodo = get_object_or_404(MetodoPago, id=metodo_id, usuario=request.user.perfilusuario)
+    
+    if metodo.es_principal:
+        # Si hay otros métodos, hacer el más reciente principal
+        siguiente_metodo = MetodoPago.objects.filter(
+            usuario=request.user.perfilusuario
+        ).exclude(id=metodo_id).first()
+        
+        if siguiente_metodo:
+            siguiente_metodo.es_principal = True
+            siguiente_metodo.save()
+    
+    metodo.delete()
+    messages.success(request, "Método de pago eliminado")
+    return redirect('accounts:user_home')
+
+@staff_member_required
+def limpiar_inquilinos(request):
+    if request.method == "POST":
+        # Obtener todas las reservas activas
+        reservas_activas = Reserva.objects.filter(estado='CONFIRMADA')
+        
+        # Registrar la cantidad de reservas que se eliminarán
+        cantidad_reservas = reservas_activas.count()
+        
+        # Eliminar todas las reservas
+        reservas_activas.delete()
+        
+        messages.success(
+            request, 
+            f"Se han eliminado {cantidad_reservas} reservas activas exitosamente"
+        )
+        
+        # Enviar notificación a los usuarios afectados
+        for reserva in reservas_activas:
+            mensaje = """
+            Le informamos que su reserva ha sido cancelada por el administrador del sistema
+            como parte de una limpieza general de inquilinos.
+            
+            Si tiene alguna pregunta, por favor contacte al administrador.
+            """
+            try:
+                enviar_mensaje(
+                    reserva.usuario.email,
+                    0,
+                    message=mensaje,
+                    subject="Cancelación de Reserva - IntelliHome"
+                )
+            except Exception as e:
+                print(f"Error enviando notificación a {reserva.usuario.email}: {str(e)}")
+    
+    return redirect('accounts:staff_home')
+
+@login_required
+def check_pagos_pendientes(request):
+    reservas = Reserva.objects.filter(
+        usuario=request.user,
+        estado='CONFIRMADA'
+    )
+    
+    necesita_refresh = False
+    for reserva in reservas:
+        if reserva.minutos_hasta_proximo_pago <= 0:
+            # Si han pasado más de 5 días (equivalente a ~1 minuto en tiempo simulado)
+            if reserva.dias_hasta_proximo_pago < -5:
+                reserva.estado = 'CANCELADA'
+                reserva.save()
+                necesita_refresh = True
+    
+    return JsonResponse({'necesita_refresh': necesita_refresh})
+
+@staff_member_required
+def gestionar_usuarios(request):
+    usuarios_activos = PerfilUsuario.objects.filter(esta_habilitado=True)
+    usuarios_deshabilitados = PerfilUsuario.objects.filter(esta_habilitado=False)
+    
+    context = {
+        'usuarios_activos': usuarios_activos,
+        'usuarios_deshabilitados': usuarios_deshabilitados,
+    }
+    return render(request, 'accounts/gestionar_usuarios.html', context)
+
+@staff_member_required
+def deshabilitar_usuario(request, user_id):
+    if request.method == "POST":
+        perfil = get_object_or_404(PerfilUsuario, user_id=user_id)
+        razon = request.POST.get('razon', '')
+        
+        # Deshabilitar usuario
+        perfil.esta_habilitado = False
+        perfil.razon_deshabilitado = razon
+        perfil.fecha_deshabilitado = timezone.now()
+        perfil.save()
+        
+        # Desactivar usuario en Django
+        perfil.user.is_active = False
+        perfil.user.save()
+        
+        # Liberar casas rentadas
+        Reserva.objects.filter(
+            usuario=perfil.user,
+            estado='CONFIRMADA'
+        ).update(estado='CANCELADA')
+        
+        messages.success(request, f"Usuario {perfil.user.username} deshabilitado exitosamente")
+    return redirect('accounts:gestionar_usuarios')
+
+@staff_member_required
+def habilitar_usuario(request, user_id):
+    if request.method == "POST":
+        perfil = get_object_or_404(PerfilUsuario, user_id=user_id)
+        
+        # Habilitar usuario
+        perfil.esta_habilitado = True
+        perfil.razon_deshabilitado = None
+        perfil.fecha_deshabilitado = None
+        perfil.save()
+        
+        # Activar usuario en Django
+        perfil.user.is_active = True
+        perfil.user.save()
+        
+        messages.success(request, f"Usuario {perfil.user.username} habilitado exitosamente")
+    return redirect('accounts:gestionar_usuarios')
 

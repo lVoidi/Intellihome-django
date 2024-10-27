@@ -64,7 +64,13 @@ class PerfilUsuario(models.Model):
     codigo_enviado_en = models.DateTimeField(auto_now_add=True)
     intentos_verificacion = models.IntegerField(default=0)
     ultimo_codigo_enviado = models.DateTimeField(null=True, blank=True)
-    # Nuevos campos para el pago
+    esta_habilitado = models.BooleanField(default=True)
+    razon_deshabilitado = models.TextField(blank=True, null=True)
+    fecha_deshabilitado = models.DateTimeField(null=True, blank=True)
+    # Campos para el manejo de saldo
+    saldo = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    ultima_actualizacion_saldo = models.DateTimeField(default=timezone.now)
+    saldo_bloqueado = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Para reservas pendientes
     nombre_tarjetahabiente = models.CharField(max_length=100, blank=True, null=True)
     numero_tarjeta = models.CharField(max_length=16, blank=True, null=True)
     fecha_validez = models.DateField(blank=True, null=True)
@@ -89,6 +95,37 @@ class PerfilUsuario(models.Model):
                     return 'Administrador Promovido'
         return 'Usuario Normal'
 
+    def tiene_saldo_suficiente(self, monto):
+        return (self.saldo - self.saldo_bloqueado) >= monto
+
+    def bloquear_saldo(self, monto):
+        if self.tiene_saldo_suficiente(monto):
+            self.saldo_bloqueado += monto
+            self.save()
+            return True
+        return False
+
+    def desbloquear_saldo(self, monto):
+        if self.saldo_bloqueado >= monto:
+            self.saldo_bloqueado -= monto
+            self.save()
+            return True
+        return False
+
+    def descontar_saldo(self, monto):
+        if self.tiene_saldo_suficiente(monto):
+            self.saldo -= monto
+            self.saldo_bloqueado -= min(monto, self.saldo_bloqueado)
+            self.ultima_actualizacion_saldo = timezone.now()
+            self.save()
+            return True
+        return False
+
+    def agregar_saldo(self, monto):
+        self.saldo += monto
+        self.ultima_actualizacion_saldo = timezone.now()
+        self.save()
+
 class PromocionAdministrador(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='promociones')
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
@@ -101,3 +138,32 @@ class PromocionAdministrador(models.Model):
     
     def __str__(self):
         return f"Promoción de {self.usuario.username}"
+
+class UsuarioAdicional(models.Model):
+    usuario_principal = models.ForeignKey(User, on_delete=models.CASCADE, related_name='usuarios_adicionales')
+    usuario_adicional = models.ForeignKey(User, on_delete=models.CASCADE, related_name='es_adicional_de')
+    fecha_asignacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('usuario_principal', 'usuario_adicional')
+        verbose_name = 'Usuario Adicional'
+        verbose_name_plural = 'Usuarios Adicionales'
+
+    def __str__(self):
+        return f"{self.usuario_adicional.username} es adicional de {self.usuario_principal.username}"
+
+class MetodoPago(models.Model):
+    usuario = models.ForeignKey('PerfilUsuario', on_delete=models.CASCADE, related_name='metodos_pago')
+    nombre_tarjetahabiente = models.CharField(max_length=100)
+    numero_tarjeta = models.CharField(max_length=16)
+    fecha_validez = models.DateField()
+    numero_verificador = models.CharField(max_length=4)
+    marca_tarjeta = models.CharField(max_length=20)
+    es_principal = models.BooleanField(default=False)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-es_principal', '-fecha_creacion']
+
+    def __str__(self):
+        return f"{self.marca_tarjeta} - **** **** **** {self.numero_tarjeta[-4:]}"
