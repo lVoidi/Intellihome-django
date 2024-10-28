@@ -144,3 +144,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_REDIRECT_URL = 'home'
 LOGIN_URL = 'accounts:login'
 LOGOUT_REDIRECT_URL = 'home'
+
+CELERY_BEAT_SCHEDULE = {
+    'limpiar-reservas-temporales': {
+        'task': 'properties.tasks.limpiar_reservas_temporales',
+        'schedule': 60.0,  
+    },
+}

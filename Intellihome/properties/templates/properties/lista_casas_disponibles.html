@@ -4,7 +4,21 @@
 
 {% block content %}
 <div class="container mt-5">
+    {% if messages %}
+    <div class="row mb-4">
+        <div class="col-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <h2 class="mb-4">Casas Disponibles</h2>
+       
     
     <!-- Formulario de búsqueda por fechas -->
     <div class="card mb-4">

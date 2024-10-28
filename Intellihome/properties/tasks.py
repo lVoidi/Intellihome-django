@@ -3,15 +3,19 @@ from .models import Reserva, ConfiguracionTiempoSimulado
 from django.core.mail import send_mail
 
 def limpiar_reservas_temporales():
-    config = ConfiguracionTiempoSimulado.objects.first()
-    minutos_limite = config.minutos_reserva_temporal if config else 5
-
-    tiempo_limite = timezone.now() - timezone.timedelta(minutes=minutos_limite)
+    tiempo_limite = timezone.now() - timezone.timedelta(minutes=5)
     
-    Reserva.objects.filter(
-        estado='TEMPORAL',
-        fecha_reserva__lt=tiempo_limite
-    ).update(estado='CANCELADA')
+    reservas_expiradas = Reserva.objects.filter(
+        estado__in=['TEMPORAL', 'CONFIRMADA'],
+        fecha_ultimo_pago__lt=tiempo_limite
+    ).exclude(estado__in=['PAGADA', 'NO_PAGADO'])
+    
+    for reserva in reservas_expiradas:
+        casa = reserva.casa
+        casa.disponible = True
+        casa.save()
+        reserva.estado = 'NO_PAGADO'
+        reserva.save()
 
 def verificar_pagos_vencidos():
     reservas_vencidas = Reserva.objects.filter(

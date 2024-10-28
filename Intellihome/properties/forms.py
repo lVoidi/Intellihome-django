@@ -101,3 +101,25 @@ class RangoFechasForm(forms.Form):
                 raise forms.ValidationError('La fecha de fin debe ser posterior a la fecha de inicio')
 
         return cleaned_data
+
+class ReservaForm(forms.Form):
+    fecha_inicio = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        initial=timezone.now().date()
+    )
+    fecha_fin = forms.DateField(
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+
+        if fecha_inicio and fecha_fin:
+            if fecha_inicio < timezone.now().date():
+                raise forms.ValidationError("La fecha de inicio no puede ser anterior a hoy")
+            if fecha_fin < fecha_inicio:
+                raise forms.ValidationError("La fecha de fin no puede ser anterior a la fecha de inicio")
+
+        return cleaned_data

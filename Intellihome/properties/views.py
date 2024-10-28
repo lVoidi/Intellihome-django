@@ -3,12 +3,13 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.utils import timezone
-from .forms import CasaForm, RangoFechasForm
+from .forms import CasaForm, RangoFechasForm, ReservaForm
 from .models import FotoCasa, Casa, Reserva, ConfiguracionTiempoSimulado
 from datetime import datetime
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from decimal import Decimal
+from django.http import JsonResponse
 
 
 # Create your views here.
@@ -115,12 +116,12 @@ def lista_casas_disponibles(request):
         fecha_inicio = form.cleaned_data['fecha_inicio']
         fecha_fin = form.cleaned_data['fecha_fin']
         
-        # Obtener las reservas que se solapan con el rango seleccionado
+        # Obtener solo las reservas CONFIRMADAS que se solapan con el rango seleccionado
         reservas = Reserva.objects.filter(
-            Q(fecha_inicio__lte=fecha_fin) & Q(fecha_fin__gte=fecha_inicio)
+            Q(fecha_inicio__lte=fecha_fin) & Q(fecha_fin__gte=fecha_inicio),
+            estado='CONFIRMADA'  # Mover el filtro de estado al final
         )
         casas_no_disponibles = set(reserva.casa.id for reserva in reservas)
-
     if request.user.is_authenticated:
         usuarios_principales = request.user.es_adicional_de.values_list('usuario_principal', flat=True)
         casas_query = casas_query.filter(
@@ -141,50 +142,48 @@ def lista_casas_disponibles(request):
     }
     return render(request, "properties/lista_casas_disponibles.html", context)
 
-
 @login_required
 def reservar_casa(request, casa_id):
     casa = get_object_or_404(Casa, id=casa_id)
     
     if request.method == "POST":
-        es_indefinida = request.POST.get('es_indefinida') == 'on'
-        fecha_inicio = request.POST.get('fecha_inicio')
-        
-        if es_indefinida:
-            fecha_fin = timezone.now().date() + timezone.timedelta(days=365)  # Un año por defecto
-        else:
-            fecha_fin = request.POST.get('fecha_fin')
-
-        # Verificar si ya existe una reserva válida para estas fechas
-        reservas_existentes = Reserva.objects.filter(
-            casa=casa,
-            estado__in=['TEMPORAL', 'CONFIRMADA']
-        ).filter(
-            Q(fecha_inicio__lte=fecha_fin) & Q(fecha_fin__gte=fecha_inicio)
-        ).exclude(
-            estado='TEMPORAL',
-            fecha_reserva__lt=timezone.now() - timezone.timedelta(minutes=5)
-        )
-
-        if reservas_existentes.exists():
-            messages.error(request, "La casa no está disponible para las fechas seleccionadas")
-            return redirect('properties:detalle_casa', casa_id=casa_id)
-
-        # Crear la reserva temporal
-        reserva = Reserva.objects.create(
+        form = ReservaForm(request.POST)
+        if form.is_valid():
+            fecha_inicio = form.cleaned_data['fecha_inicio']
+            fecha_fin = form.cleaned_data['fecha_fin']
+            es_indefinida = request.POST.get('es_indefinida') == 'on'
+            
+            # Verificar disponibilidad
+            reservas_existentes = Reserva.objects.filter(
+                casa=casa,
+                estado='CONFIRMADA', 
+                fecha_inicio__lte=fecha_fin,
+                fecha_fin__gte=fecha_inicio
+            )
+            
+            if reservas_existentes.exists():
+                messages.error(request, "La casa no está disponible para las fechas seleccionadas")
+                return redirect('properties:detalle_casa', casa_id=casa_id)
+            
+            # Crear la reserva
+            reserva = Reserva.objects.create(
             casa=casa,
             usuario=request.user,
             fecha_inicio=fecha_inicio,
             fecha_fin=fecha_fin,
             es_indefinida=es_indefinida,
-            estado='TEMPORAL'
-        )
-
-        return redirect('properties:confirmar_pago', reserva_id=reserva.id)
-
+            estado='TEMPORAL',  
+            fecha_reserva=timezone.now()  
+           )
+            
+            messages.success(request, "Casa reservada exitosamente. Por favor, diríjase a su perfil para realizar el pago.")
+            return redirect('accounts:profile')  # Redirigir al perfil del usuario
+    else:
+        form = ReservaForm()
+    
     return render(request, 'properties/reservar_casa.html', {
-        'casa': casa,
-        'form': RangoFechasForm()
+        'form': form,
+        'casa': casa
     })
 
 @login_required
@@ -211,60 +210,6 @@ def configurar_tiempo_simulado(request):
     return render(request, 'properties/configurar_tiempo.html', {'config': config})
 
 
-@login_required
-def confirmar_pago(request, reserva_id):
-    reserva = get_object_or_404(Reserva, id=reserva_id, usuario=request.user)
-    
-    # Obtener o crear la configuración de tiempo
-    config_tiempo, created = ConfiguracionTiempoSimulado.objects.get_or_create(
-        defaults={'minutos_reserva_temporal': 15}
-    )
-    
-    # Calcular el costo total
-    if reserva.es_indefinida:
-        costo_total = reserva.casa.monto
-    else:
-        dias = (reserva.fecha_fin - reserva.fecha_inicio).days
-        costo_total = reserva.casa.monto_diario * dias
-    
-    if request.method == "POST":
-        # Debug logs
-        print(f"Usuario: {request.user.username}")
-        print(f"Tiene método de pago principal: {request.user.perfilusuario.metodos_pago.filter(es_principal=True).exists()}")
-        print(f"Estado actual de la reserva: {reserva.estado}")
-        
-        # Verificar que el usuario tenga un método de pago
-        if not request.user.perfilusuario.metodos_pago.filter(es_principal=True).exists():
-            messages.error(request, "Necesitas tener un método de pago principal para continuar")
-            return redirect('accounts:user_home')
-        
-        try:
-            # Actualizar la reserva
-            reserva.estado = 'CONFIRMADA'
-            reserva.fecha_reserva = timezone.now()
-            reserva.proximo_pago = reserva.fecha_inicio + timezone.timedelta(days=30)
-            reserva.save()
-            
-            # Debug log
-            print(f"Nuevo estado de la reserva: {reserva.estado}")
-            
-            messages.success(
-                request, 
-                f"¡Reserva confirmada exitosamente! El pago de ${costo_total:.2f} ha sido procesado."
-            )
-            return redirect('accounts:profile')  # Cambiamos aquí
-            
-        except Exception as e:
-            messages.error(request, "Hubo un error al procesar el pago. Por favor, intenta nuevamente.")
-            return redirect('properties:lista_casas')
-    
-    context = {
-        'reserva': reserva,
-        'tiempo_restante': config_tiempo.minutos_reserva_temporal,
-        'costo_total': costo_total
-    }
-    
-    return render(request, 'properties/confirmar_pago.html', context)
 
 
 @login_required
@@ -292,76 +237,6 @@ def ver_inquilinos(request, casa_id):
     }
     return render(request, 'properties/inquilinos_casa.html', context)
 
-@login_required
-def procesar_pago(request, reserva_id):
-    if request.method == "POST":
-        reserva = get_object_or_404(Reserva, id=reserva_id, usuario=request.user)
-        perfil = request.user.perfilusuario
-        tipo_pago = request.POST.get('tipo_pago', 'completo')
-        
-        # Calcular monto total y cuotas
-        monto_total = reserva.casa.monto if reserva.es_indefinida else reserva.casa.monto_diario
-        
-        if tipo_pago == 'semanal':
-            dias_extension = 7
-            monto = monto_total / 4
-            cuotas_totales = 4
-        elif tipo_pago == 'diario':
-            dias_extension = 1
-            monto = monto_total / 30
-            cuotas_totales = 30
-        else:  # pago completo
-            dias_extension = 30
-            monto = monto_total
-            cuotas_totales = 1
-        
-        if perfil.saldo < monto:
-            messages.error(request, "Saldo insuficiente")
-            return redirect('accounts:profile')
-        
-        try:
-            # Descontar saldo
-            perfil.saldo -= Decimal(str(monto))
-            perfil.save()
-            
-            # Actualizar reserva
-            reserva.tipo_pago_actual = tipo_pago.upper()
-            reserva.cuotas_totales = cuotas_totales
-            reserva.cuotas_pagadas += 1
-            
-            # Registrar el pago en el historial
-            pago = {
-                'fecha': timezone.now().isoformat(),
-                'monto': float(monto),
-                'tipo_pago': tipo_pago,
-                'cuota_numero': reserva.cuotas_pagadas
-            }
-            historial = reserva.historial_pagos
-            historial.append(pago)
-            reserva.historial_pagos = historial
-            
-            # Actualizar próximo pago
-            reserva.proximo_pago = timezone.now().date() + timezone.timedelta(days=dias_extension)
-            reserva.save()
-            
-            # Actualizar tiempo restante
-            dias_extension_simulados = dias_extension / 6  # 30 días = 5 minutos
-            reserva.tiempo_restante_minutos = dias_extension_simulados
-            
-            messages.success(
-                request, 
-                f"Pago de ${monto:.2f} procesado exitosamente. "
-                f"Cuota {reserva.cuotas_pagadas}/{cuotas_totales} pagada. "
-                f"Próximo pago en {dias_extension} días."
-            )
-            
-        except Exception as e:
-            messages.error(request, "Error al procesar el pago")
-            print(f"Error en procesar_pago: {str(e)}")
-            
-        return redirect('accounts:profile')
-    
-    return redirect('accounts:profile')
 
 @login_required
 @user_passes_test(es_admin)
@@ -411,3 +286,62 @@ def reporte_alquileres(request):
         'anio_seleccionado': anio
     }
     return render(request, 'properties/reporte_alquileres.html', context)
+
+@login_required
+def procesar_pago(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id, usuario=request.user)
+    
+    # Verificar si la reserva está expirada o si se recibe la señal de expiración
+    if reserva.esta_expirada() or (request.method == "POST" and request.headers.get('Content-Type') == 'application/json'):
+        # Marcar la casa como disponible
+        casa = reserva.casa
+        casa.disponible = True
+        casa.save()
+        
+        # Eliminar la reserva en lugar de solo marcarla como cancelada
+        reserva.delete()
+        
+        # Si es una petición AJAX, devolver respuesta JSON
+        if request.headers.get('Content-Type') == 'application/json':
+            return JsonResponse({'status': 'success'})
+            
+        messages.error(request, "El tiempo para realizar el pago ha expirado")
+        return redirect('accounts:profile')
+    
+    if request.method == "POST":
+        if not reserva.tipo_plan:
+            tipo_plan = request.POST.get('tipo_plan')
+            if tipo_plan not in [choice[0] for choice in Reserva.TIPOS_PLAN]:
+                messages.error(request, "Plan de pago inválido")
+                return redirect('accounts:profile')
+                
+            reserva.tipo_plan = tipo_plan
+            reserva.cuotas_totales = reserva.calcular_cuotas_totales()
+            reserva.fecha_ultimo_pago = timezone.now()
+            reserva.save()
+            
+            messages.success(request, "Plan seleccionado exitosamente. Por favor, realice el primer pago.")
+            return redirect('accounts:profile')
+        
+        # Si ya tiene plan, procesar el pago
+        perfil = request.user.perfilusuario
+        monto = Decimal(str(reserva.calcular_monto_pago()))
+        
+        if perfil.saldo >= monto:
+            perfil.saldo -= monto
+            perfil.save()
+            
+            reserva.cuotas_pagadas += 1
+            reserva.fecha_ultimo_pago = timezone.now()
+            
+            if reserva.cuotas_pagadas >= reserva.cuotas_totales:
+                reserva.estado = 'PAGADA'
+            else:
+                reserva.estado = 'CONFIRMADA'
+            reserva.save()
+            
+            messages.success(request, f"Pago procesado exitosamente. Cuota {reserva.cuotas_pagadas}/{reserva.cuotas_totales}. Monto pagado: ${monto}")
+        else:
+            messages.error(request, "Saldo insuficiente para realizar el pago")
+    
+    return redirect('accounts:profile')

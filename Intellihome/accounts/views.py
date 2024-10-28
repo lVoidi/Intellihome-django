@@ -559,19 +559,18 @@ def agregar_saldo(request):
 
 @login_required
 def profile(request):
-    print("Entrando a la vista profile")  # Log inicial
     perfil = request.user.perfilusuario
-    
-    print(f"Buscando reservas para usuario: {request.user.username}")  # Log pre-query
     reservas_activas = Reserva.objects.filter(
         usuario=request.user,
-        estado='CONFIRMADA'
+        estado__in=['TEMPORAL', 'CONFIRMADA']
     ).select_related('casa__estilo')
     
-    # Debug logs
-    print(f"Query completada. Cantidad de reservas: {reservas_activas.count()}")
+    # Filtrar las reservas expiradas
+    reservas_activas = [reserva for reserva in reservas_activas if not reserva.esta_expirada()]
+    
+    # Calcular tiempo restante para cada reserva
     for reserva in reservas_activas:
-        print(f"Reserva encontrada -> ID: {reserva.id}, Estado: {reserva.estado}, Casa: {reserva.casa.estilo.nombre}")
+        reserva.tiempo_restante = reserva.tiempo_restante_pago()
     
     context = {
         'perfil': perfil,
@@ -644,10 +643,22 @@ def limpiar_inquilinos(request):
         # Obtener todas las reservas activas
         reservas_activas = Reserva.objects.filter(estado='CONFIRMADA')
         
+        # Guardar la información necesaria antes de eliminar
+        reservas_info = [(reserva.usuario.email, reserva.casa) for reserva in reservas_activas]
+        
         # Registrar la cantidad de reservas que se eliminarán
         cantidad_reservas = reservas_activas.count()
         
-        # Eliminar todas las reservas
+        # Actualizar el estado de las casas y limpiar todas las reservas
+        for reserva in reservas_activas:
+            casa = reserva.casa
+            casa.disponible = True  # Marcar la casa como disponible
+            casa.save()
+            
+            # Eliminar todas las reservas asociadas a esta casa
+            Reserva.objects.filter(casa=casa).delete()
+
+        # Eliminar todas las reservas activas
         reservas_activas.delete()
         
         messages.success(
@@ -656,25 +667,26 @@ def limpiar_inquilinos(request):
         )
         
         # Enviar notificación a los usuarios afectados
-        for reserva in reservas_activas:
-            mensaje = """
-            Le informamos que su reserva ha sido cancelada por el administrador del sistema
-            como parte de una limpieza general de inquilinos.
+        for email, casa in reservas_info:
+            mensaje = f"""
+            Le informamos que su reserva para la casa {casa.estilo.nombre} ha sido cancelada 
+            por el administrador del sistema como parte de una limpieza general de inquilinos.
             
             Si tiene alguna pregunta, por favor contacte al administrador.
             """
             try:
                 enviar_mensaje(
-                    reserva.usuario.email,
+                    email,
                     0,
                     message=mensaje,
                     subject="Cancelación de Reserva - IntelliHome"
                 )
             except Exception as e:
-                print(f"Error enviando notificación a {reserva.usuario.email}: {str(e)}")
+                print(f"Error enviando notificación a {email}: {str(e)}")
     
     return redirect('accounts:staff_home')
 
+    
 @login_required
 def check_pagos_pendientes(request):
     reservas = Reserva.objects.filter(
@@ -746,4 +758,5 @@ def habilitar_usuario(request, user_id):
         
         messages.success(request, f"Usuario {perfil.user.username} habilitado exitosamente")
     return redirect('accounts:gestionar_usuarios')
+
 

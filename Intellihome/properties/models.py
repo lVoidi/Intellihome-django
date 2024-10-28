@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from accounts.models import EstiloCasa
 from django.utils import timezone
+from datetime import timedelta
+from decimal import Decimal
 
 # Create your models here.
 
@@ -35,6 +37,16 @@ class Casa(models.Model):
         default=1.00 
     )
     fecha_registro = models.DateTimeField(auto_now_add=True)
+    ESTADOS = [
+        ('DISPONIBLE', 'Disponible'),
+        ('OCUPADA', 'Ocupada'),
+        ('MANTENIMIENTO', 'En Mantenimiento'),
+    ]
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADOS,
+        default='DISPONIBLE'
+    )
 
     def __str__(self):
         return f"Casa {self.id} - {self.estilo.nombre}"
@@ -73,35 +85,70 @@ class ConfiguracionTiempoSimulado(models.Model):
         return self.minutos_por_mes / 30
 
 class Reserva(models.Model):
-    casa = models.ForeignKey(Casa, on_delete=models.CASCADE)
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
-    fecha_inicio = models.DateField()
-    fecha_fin = models.DateField(null=True, blank=True)  # Permitimos que sea null
-    fecha_reserva = models.DateTimeField(auto_now_add=True)
-    estado = models.CharField(
-        max_length=20,
-        choices=[
-            ('TEMPORAL', 'Temporal'),
-            ('CONFIRMADA', 'Confirmada'),
-            ('CANCELADA', 'Cancelada'),
-        ],
-        default='TEMPORAL'
-    )
+    TIPOS_PLAN = [
+        ('DIARIO', 'Pago Diario'),
+        ('MENSUAL_CON_SERVICIOS', 'Mensual con Servicios'),
+        ('MENSUAL_SIN_SERVICIOS', 'Mensual sin Servicios'),
+    ]
+
+    ESTADOS = [
+        ('TEMPORAL', 'Temporal'),
+        ('CONFIRMADA', 'Confirmada'),
+        ('PAGADA', 'Pagada'),
+        ('NO_PAGADO', 'No Pagado')
+    ]
+    
+    casa = models.ForeignKey('Casa', on_delete=models.CASCADE)
+    usuario = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    fecha_inicio = models.DateField(null=True)
+    fecha_fin = models.DateField(null=True)
     es_indefinida = models.BooleanField(default=False)
-    proximo_pago = models.DateField(null=True, blank=True)
-    tipo_pago_actual = models.CharField(
-        max_length=20,
-        choices=[
-            ('COMPLETO', 'Pago Completo'),
-            ('SEMANAL', 'Pago Semanal'),
-            ('DIARIO', 'Pago Diario'),
-        ],
-        default='COMPLETO'
-    )
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='TEMPORAL')
+    tipo_plan = models.CharField(max_length=25, choices=TIPOS_PLAN, null=True, blank=True)
+    cuotas_totales = models.IntegerField(default=0)
     cuotas_pagadas = models.IntegerField(default=0)
-    cuotas_totales = models.IntegerField(default=1)
-    historial_pagos = models.JSONField(default=list)
-    tiempo_restante_minutos = models.FloatField(default=5.0)  # Inicialmente 5 minutos
+    fecha_reserva = models.DateTimeField(auto_now_add=True)
+    fecha_ultimo_pago = models.DateTimeField(null=True, blank=True)
+
+    def calcular_monto_pago(self):
+        if not self.tipo_plan:
+            raise ValueError("Debe seleccionar un plan de pago primero")
+            
+        dias_totales = (self.fecha_fin - self.fecha_inicio).days
+        
+        if self.tipo_plan == 'DIARIO':
+            return self.casa.monto_diario
+        elif self.tipo_plan == 'MENSUAL_CON_SERVICIOS':
+            return self.casa.monto
+        else:  # MENSUAL_SIN_SERVICIOS
+            return self.casa.monto_sin_servicios
+            
+    def calcular_cuotas_totales(self):
+        if not self.tipo_plan:
+            return 0
+            
+        dias_totales = (self.fecha_fin - self.fecha_inicio).days
+        
+        if self.tipo_plan == 'DIARIO':
+            return dias_totales
+        else:  # Planes mensuales
+            meses_completos = dias_totales // 30
+            if dias_totales % 30 > 0:
+                meses_completos += 1
+            return meses_completos
+        
+    def tiempo_restante_pago(self):
+        # Si ya está pagada completamente, no hay temporizador
+        if self.estado == 'PAGADA':
+            return 0
+            
+        minutos_limite = 5  # Establecemos 5 minutos fijos
+        
+        # Usar la fecha de último pago si existe, sino usar fecha_reserva
+        ultima_fecha = self.fecha_ultimo_pago if self.fecha_ultimo_pago else self.fecha_reserva
+        tiempo_transcurrido = timezone.now() - ultima_fecha
+        tiempo_restante = minutos_limite - (tiempo_transcurrido.total_seconds() / 60)
+        return max(0, tiempo_restante)
 
     class Meta:
         verbose_name = 'Reserva'
@@ -111,46 +158,17 @@ class Reserva(models.Model):
         return f'Reserva de {self.casa.estilo.nombre} por {self.usuario.get_full_name()}'
 
     def esta_expirada(self):
-        if self.estado != 'TEMPORAL':
+        if self.estado == 'PAGADA':
             return False
+            
+        minutos_limite = 5
+        ultima_fecha = self.fecha_ultimo_pago if self.fecha_ultimo_pago else self.fecha_reserva
+        tiempo_transcurrido = timezone.now() - ultima_fecha
         
-        config = ConfiguracionTiempoSimulado.objects.first()
-        if not config:
-            minutos_limite = 5
-        else:
-            minutos_limite = config.minutos_reserva_temporal
-
-        tiempo_transcurrido = timezone.now() - self.fecha_reserva
-        return tiempo_transcurrido.total_seconds() / 60 > minutos_limite
-
-    @property
-    def dias_hasta_proximo_pago(self):
-        if not self.proximo_pago:
-            return 0
-        dias = (self.proximo_pago - timezone.now().date()).days
-        return dias
-
-    @property
-    def esta_vencida(self):
-        return self.dias_hasta_proximo_pago < -5
-
-    @property
-    def minutos_hasta_proximo_pago(self):
-        if not self.proximo_pago:
-            return float('inf')
-        
-        # Convertir días a minutos (1 mes = 5 minutos)
-        dias_reales = (self.proximo_pago - timezone.now().date()).days
-        # 30 días = 5 minutos, entonces 1 día = 5/30 minutos
-        return (dias_reales * 5) / 30
-
-    @property
-    def estado_pago(self):
-        minutos = self.minutos_hasta_proximo_pago
-        if minutos <= 0:
-            return 'VENCIDO'
-        elif minutos <= 1:  # Menos de 1 minuto (equivalente a 6 días reales)
-            return 'URGENTE'
-        elif minutos <= 2:  # Menos de 2 minutos (equivalente a 12 días reales)
-            return 'PRÓXIMO'
-        return 'AL_DIA'
+        if tiempo_transcurrido.total_seconds() / 60 > minutos_limite:
+            self.estado = 'NO_PAGADO'
+            self.casa.disponible = True
+            self.casa.save()
+            self.save()
+            return True
+        return False

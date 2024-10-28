@@ -14,8 +14,7 @@ urlpatterns = [
     path('disponibilidad/', views.gestionar_disponibilidad, name='gestionar_disponibilidad'),
     path('casa/<int:casa_id>/disponibilidad/', views.cambiar_disponibilidad, name='cambiar_disponibilidad'),
     path('casa/<int:casa_id>/reservar/', views.reservar_casa, name='reservar_casa'),
-    path('reserva/<int:reserva_id>/confirmar-pago/', views.confirmar_pago, name='confirmar_pago'),
     path('casa/<int:casa_id>/inquilinos/', views.ver_inquilinos, name='ver_inquilinos'),
-    path('reserva/<int:reserva_id>/procesar-pago/', views.procesar_pago, name='procesar_pago'),
     path('reporte-alquileres/', views.reporte_alquileres, name='reporte_alquileres'),
+    path('procesar-pago/<int:reserva_id>/', views.procesar_pago, name='procesar_pago'),
 ]
