@@ -37,4 +37,5 @@ urlpatterns = [
     path('gestionar-usuarios/', views.gestionar_usuarios, name='gestionar_usuarios'),
     path('deshabilitar-usuario/<int:user_id>/', views.deshabilitar_usuario, name='deshabilitar_usuario'),
     path('habilitar-usuario/<int:user_id>/', views.habilitar_usuario, name='habilitar_usuario'),
+    path('sistema-deshabilitado/', views.sistema_deshabilitado, name='sistema_deshabilitado'),
 ]

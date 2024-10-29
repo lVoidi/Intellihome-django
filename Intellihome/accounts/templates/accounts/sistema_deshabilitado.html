@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="alert alert-warning text-center">
+        <h2><i class="fas fa-exclamation-triangle"></i> Sistema Temporalmente Deshabilitado</h2>
+        <p class="lead">
+            El sistema se encuentra temporalmente deshabilitado por mantenimiento.
+            Por favor, intente más tarde.
+        </p>
+        <hr>
+        <p>
+            Si usted es el administrador, puede 
+            <a href="{% url 'accounts:login' %}" class="alert-link">iniciar sesión aquí</a>.
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Usuario Adicional - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="text-center mb-0">Confirmar Usuario Adicional</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-center">
+                        ¿Estás seguro que deseas agregar a <strong>{{ usuario_adicional.username }}</strong> 
+                        como usuario adicional?
+                    </p>
+                    
+                    <div class="d-flex justify-content-center gap-2">
+                        <form method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check me-1"></i>Confirmar
+                            </button>
+                        </form>
+                        <a href="{% url 'accounts:gestionar_usuarios_adicionales' %}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i>Cancelar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

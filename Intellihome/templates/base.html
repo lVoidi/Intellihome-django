@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
   <head>
@@ -46,13 +47,6 @@
               {% endif %}
             </li>
             {% if user.is_authenticated %}
-              <!-- Editar perfil 
-              <li class="nav-item">
-                {% if not user.is_superuser %}
-                    <a class="nav-link" href="{% url 'accounts:edit_profile' %}">Editar Perfil</a>
-                {% endif %}
-              </li>
-              -->
               <li class="nav-item">
                 {% if user.is_superuser %}
                   <a class="nav-link" href="/admin/">Panel de control</a>
@@ -64,6 +58,14 @@
                   <a class="nav-link" href="{% url 'accounts:profile' %}">Perfil</a>
                 {% endif %}
               </li>
+              <!-- Nuevo enlace para Dispositivos IoT -->
+              {% if not user.is_superuser and not user.is_staff %}
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'devices:mis_dispositivos' %}">
+                  <i class="fas fa-microchip"></i> Mis Dispositivos
+                </a>
+              </li>
+              {% endif %}
             {% endif %}
           </ul>
           <ul class="navbar-nav">

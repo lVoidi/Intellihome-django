@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 # Create your models here.
 
@@ -126,6 +128,13 @@ class PerfilUsuario(models.Model):
         self.ultima_actualizacion_saldo = timezone.now()
         self.save()
 
+class ConfiguracionSistema(models.Model):
+    esta_habilitado = models.BooleanField(default=True)
+    
+    class Meta:
+        verbose_name = "Configuración del Sistema"
+        verbose_name_plural = "Configuraciones del Sistema"
+
 class PromocionAdministrador(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='promociones')
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
@@ -167,3 +176,14 @@ class MetodoPago(models.Model):
 
     def __str__(self):
         return f"{self.marca_tarjeta} - **** **** **** {self.numero_tarjeta[-4:]}"
+
+
+
+@receiver(post_save, sender=User)
+def crear_perfil_usuario(sender, instance, created, **kwargs):
+    if created:
+        PerfilUsuario.objects.create(usuario=instance)
+
+@receiver(post_save, sender=User)
+def guardar_perfil_usuario(sender, instance, **kwargs):
+    instance.perfilusuario.save()

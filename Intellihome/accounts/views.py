@@ -10,7 +10,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from .forms import UserRegistrationForm, VerificationCodeForm, SetPasswordForm, CustomAuthenticationForm, ForgotPasswordForm, UserProfileEditForm, PaymentInfoForm
-from .models import PerfilUsuario, PromocionAdministrador, UsuarioAdicional, MetodoPago
+from .models import PerfilUsuario, PromocionAdministrador, UsuarioAdicional, MetodoPago, ConfiguracionSistema, SystemStatus   
 from properties.models import Casa
 from .utils import enviar_mensaje, generar_codigo_verificacion
 import string
@@ -75,6 +75,9 @@ def register(request):
                 return redirect('accounts:verify_code')
     else:
         form = UserRegistrationForm()
+
+def sistema_deshabilitado(request):
+    return render(request, 'accounts/sistema_deshabilitado.html')
     
     return render(request, 'accounts/register.html', {'form': form})
 
@@ -252,17 +255,38 @@ def user_home(request):
     return redirect('accounts:profile')
 
 def custom_login(request):
-    if request.user.is_authenticated:
-        return redirect_based_on_user_type(request.user)
-        
+    # Verificar el estado del sistema
+    system_status = SystemStatus.objects.first()
+    if system_status and not system_status.is_enabled:
+        if request.method == 'POST':
+            form = CustomAuthenticationForm(request, data=request.POST)
+            if form.is_valid():
+                user = form.get_user()
+                if user.is_staff or user.is_superuser:
+                    login(request, user)
+                    return redirect('admin:index')
+                else:
+                    messages.error(request, 'Acceso denegado. El sistema está deshabilitado.')
+        else:
+            form = CustomAuthenticationForm(request)
+        return render(request, 'accounts/sistema_deshabilitado.html')
+
+    # Sistema habilitado - proceso normal de login
     if request.method == 'POST':
         form = CustomAuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect_based_on_user_type(user)
+            
+            # Redirigir según el tipo de usuario
+            if user.is_superuser:
+                return redirect('admin:index')
+            elif user.is_staff:
+                return redirect('accounts:staff_home')
+            else:
+                return redirect('accounts:user_home')
     else:
-        form = CustomAuthenticationForm()
+        form = CustomAuthenticationForm(request)
     
     return render(request, 'accounts/login.html', {'form': form})
 
@@ -560,6 +584,8 @@ def agregar_saldo(request):
 @login_required
 def profile(request):
     perfil = request.user.perfilusuario
+    usuarios_adicionales = UsuarioAdicional.objects.filter(usuario_principal=request.user)
+    
     reservas_activas = Reserva.objects.filter(
         usuario=request.user,
         estado__in=['TEMPORAL', 'CONFIRMADA']
@@ -575,6 +601,7 @@ def profile(request):
     context = {
         'perfil': perfil,
         'reservas_activas': reservas_activas,
+        'usuarios_adicionales': usuarios_adicionales,
     }
     return render(request, 'accounts/user_profile.html', context)
 

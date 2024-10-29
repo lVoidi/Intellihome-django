@@ -9,7 +9,7 @@ class SystemStatusMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if not request.path.startswith('/admin/'):
+        if not request.path.startswith('/admin'):
             try:
                 system_status = SystemStatus.objects.first()
                 if system_status and not system_status.is_enabled:

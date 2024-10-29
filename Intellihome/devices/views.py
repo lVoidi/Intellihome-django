@@ -5,6 +5,8 @@ from properties.models import Casa
 from .models import DispositivoIoT, TipoDispositivo
 from .forms import DispositivoIoTForm
 from .utils import notify_iot_server
+from accounts.models import UsuarioAdicional
+from django.db.models import Q
 
 
 def es_admin(user):
@@ -82,3 +84,31 @@ def eliminar_dispositivo(request, dispositivo_id):
         messages.success(request, 'Dispositivo eliminado exitosamente')
         return redirect('devices:gestionar_dispositivos', casa_id=casa_id)
     return redirect('devices:gestionar_dispositivos', casa_id=dispositivo.casa.id)
+
+
+@login_required
+def mis_dispositivos(request):
+    # Primero verificamos si el usuario es un usuario adicional
+    try:
+        relacion_adicional = UsuarioAdicional.objects.get(usuario_adicional=request.user)
+        usuario_principal = relacion_adicional.usuario_principal
+        # Obtener casas del usuario principal
+        casas = Casa.objects.filter(
+            reserva__usuario=usuario_principal,
+            reserva__estado='CONFIRMADA'
+        ).distinct()
+    except UsuarioAdicional.DoesNotExist:
+        # Si no es usuario adicional, obtener sus propias casas
+        casas = Casa.objects.filter(
+            reserva__usuario=request.user,
+            reserva__estado='CONFIRMADA'
+        ).distinct()
+    
+    dispositivos_por_casa = {}
+    for casa in casas:
+        dispositivos_por_casa[casa] = DispositivoIoT.objects.filter(casa=casa)
+    
+    return render(request, 'devices/mis_dispositivos.html', {
+        'dispositivos_por_casa': dispositivos_por_casa,
+        'es_adicional': hasattr(request.user, 'usuarioadicional')
+    })
