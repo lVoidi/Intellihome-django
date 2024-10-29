@@ -213,13 +213,13 @@ def confirmar_promocion(request, codigo=None):
                 promocion.save()
                 messages.info(request, 'Has rechazado la promoción a administrador.')
             
-            return redirect('home')
+            return redirect('accounts:login')
             
         return render(request, 'accounts/confirmar_promocion.html', {'promocion': promocion})
         
     except PromocionAdministrador.DoesNotExist:
         messages.error(request, 'Código de confirmación inválido o ya procesado')
-        return redirect('home')
+        return redirect('accounts:login	')
 
 def home(request):
     if request.user.is_authenticated:
@@ -398,14 +398,14 @@ def edit_profile(request):
                 form.save_m2m()
                 
                 messages.success(request, 'Perfil actualizado exitosamente')
-                return redirect('home')
+                return redirect('accounts:profile')
         else:
             form = UserProfileEditForm(instance=perfil)
         
         return render(request, 'accounts/edit_profile.html', {'form': form})
     except User.perfilusuario.RelatedObjectDoesNotExist:
         messages.error(request, 'Los datos del administrador no se pueden modificar')
-        return redirect('home')
+        return redirect('accounts:profile')
 
 def payment_info(request):
     if 'pending_registration' not in request.session:
@@ -599,11 +599,11 @@ def agregar_metodo_pago(request):
             )
             
             messages.success(request, f"Método de pago agregado exitosamente")
-            return redirect('accounts:user_home')
+            return redirect('accounts:profile')  # Cambiado de user_home a profile
         else:
             messages.error(request, "Por favor, verifica los datos ingresados")
     
-    return redirect('accounts:user_home')
+    return redirect('accounts:profile')  
 
 @login_required
 def establecer_metodo_pago_principal(request, metodo_id):
