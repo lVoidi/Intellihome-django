@@ -34,11 +34,6 @@ def gestionar_dispositivos(request, casa_id):
             dispositivo.casa = casa
             dispositivo.save()
 
-            # Notificar al servidor IoT
-            notify_iot_server(
-                "add", {"id": dispositivo.id, "type": dispositivo.tipo.nombre.lower()}
-            )
-
             messages.success(request, "Dispositivo agregado exitosamente")
             return redirect("devices:gestionar_dispositivos", casa_id=casa.id)
     else:
@@ -76,11 +71,6 @@ def eliminar_dispositivo(request, dispositivo_id):
     if request.method == 'POST':
         casa_id = dispositivo.casa.id
         
-        # Notificar al servidor IoT antes de eliminar
-        notify_iot_server("delete", {
-            "id": dispositivo.id
-        })
-        
         dispositivo.delete()
         messages.success(request, 'Dispositivo eliminado exitosamente')
         return redirect('devices:gestionar_dispositivos', casa_id=casa_id)
@@ -93,12 +83,14 @@ def mis_dispositivos(request):
     try:
         relacion_adicional = UsuarioAdicional.objects.get(usuario_adicional=request.user)
         usuario_principal = relacion_adicional.usuario_principal
+        print("Usuario adicional")
         # Obtener casas del usuario principal
         casas = Casa.objects.filter(
             reserva__usuario=usuario_principal,
             reserva__estado='CONFIRMADA'
         ).distinct()
     except UsuarioAdicional.DoesNotExist:
+        print("Usuario principal")
         # Si no es usuario adicional, obtener sus propias casas
         casas = Casa.objects.filter(
             reserva__usuario=request.user,
@@ -125,15 +117,19 @@ def probar_dispositivo(request, dispositivo_id):
                 return JsonResponse({'success': False, 'message': 'No autorizado'})
         else:
             # Verificar si el usuario es principal o adicional con acceso a la casa
-            tiene_acceso = Casa.objects.filter(
-                Q(reserva__usuario=request.user) |
-                Q(reserva__usuario__usuarioadicional__usuario_adicional=request.user),
-                id=dispositivo.casa.id,
-                reserva__estado='CONFIRMADA'
-            ).exists()
-            
-            if not tiene_acceso:
-                return JsonResponse({'success': False, 'message': 'No autorizado'})
+            try:
+                tiene_acceso = Casa.objects.filter(
+                    Q(reserva__usuario=request.user) |
+                    Q(reserva__usuario__usuario_adicional=request.user),
+                    id=dispositivo.casa.id,
+                    reserva__estado='CONFIRMADA'
+                ).exists()
+                print(tiene_acceso)
+                if not tiene_acceso:
+                    return JsonResponse({'success': False, 'message': 'No autorizado'})
+            except Exception as e:
+                print(e)
+                pass
         print(dispositivo.tipo.nombre, dispositivo.id)
         success = notify_iot_server('toggle', {
             'id': dispositivo.id,

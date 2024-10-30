@@ -29,6 +29,7 @@
                                 </p>
                                 <button class="btn btn-primary btn-sm toggle-device" 
                                         data-device-id="{{ dispositivo.id }}"
+                                        onclick="probarDispositivo({{ dispositivo.id }})"
                                         data-current-state="{{ dispositivo.estado|yesno:'true,false' }}">
                                     <i class="fas fa-power-off me-1"></i>
                                     {{ dispositivo.estado|yesno:"Apagar,Encender" }}
@@ -51,3 +52,28 @@
     {% endif %}
 </div>
 {% endblock %} 
+
+{% block extra_js %}
+<script>
+    function probarDispositivo(dispositivoId) {
+        fetch(`/devices/probar/${dispositivoId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Dispositivo probado exitosamente');
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error al probar el dispositivo');
+            console.error('Error:', error);
+        });
+    }
+</script>
+{% endblock %}
