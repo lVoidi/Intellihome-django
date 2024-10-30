@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
@@ -112,3 +113,36 @@ def mis_dispositivos(request):
         'dispositivos_por_casa': dispositivos_por_casa,
         'es_adicional': hasattr(request.user, 'usuarioadicional')
     })
+
+@login_required
+def probar_dispositivo(request, dispositivo_id):
+    if request.method == 'POST':
+        dispositivo = get_object_or_404(DispositivoIoT, id=dispositivo_id)
+        
+        # Verificar si el usuario tiene acceso al dispositivo
+        if request.user.is_staff:
+            if dispositivo.casa.administrador != request.user:
+                return JsonResponse({'success': False, 'message': 'No autorizado'})
+        else:
+            # Verificar si el usuario es principal o adicional con acceso a la casa
+            tiene_acceso = Casa.objects.filter(
+                Q(reserva__usuario=request.user) |
+                Q(reserva__usuario__usuarioadicional__usuario_adicional=request.user),
+                id=dispositivo.casa.id,
+                reserva__estado='CONFIRMADA'
+            ).exists()
+            
+            if not tiene_acceso:
+                return JsonResponse({'success': False, 'message': 'No autorizado'})
+        print(dispositivo.tipo.nombre, dispositivo.id)
+        success = notify_iot_server('toggle', {
+            'id': dispositivo.id,
+            'type': dispositivo.tipo.nombre
+        })
+        
+        return JsonResponse({
+            'success': success,
+            'message': 'Prueba exitosa' if success else 'Error al probar el dispositivo'
+        })
+    
+    return JsonResponse({'success': False, 'message': 'Método no permitido'})

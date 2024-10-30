@@ -9,4 +9,5 @@ urlpatterns = [
     path('dispositivo/<int:dispositivo_id>/cambiar-estado/', views.cambiar_estado, name='cambiar_estado'),
     path('dispositivo/<int:dispositivo_id>/eliminar/', views.eliminar_dispositivo, name='eliminar_dispositivo'),
     path('mis-dispositivos/', views.mis_dispositivos, name='mis_dispositivos'),
+    path('probar/<int:dispositivo_id>/', views.probar_dispositivo, name='probar_dispositivo'),
 ]
