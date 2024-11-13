@@ -1,0 +1,485 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Nueva sección de información del usuario -->
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="me-4">
+                            {% if perfil.foto_perfil %}
+                            <img src="{{ perfil.foto_perfil.url }}" alt="Foto de perfil" 
+                                 class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                            {% else %}
+                            <img src="https://via.placeholder.com/150" alt="Foto de perfil por defecto" 
+                                 class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h2 class="mb-0">{{ request.user.get_full_name }}</h2>
+                            <p class="text-muted mb-2">@{{ request.user.username }}</p>
+                            <p class="mb-2"><i class="fas fa-envelope me-2"></i>{{ request.user.email }}</p>
+                            <p class="mb-2"><i class="fas fa-birthday-cake me-2"></i>{{ perfil.fecha_nacimiento }}</p>
+                            <p class="mb-0">
+                                <span class="badge bg-primary">{{ perfil.get_user_status }}</span>
+                            </p>
+                            <a href="{% url 'accounts:edit_profile' %}" class="btn btn-outline-primary btn-sm mt-3">
+                                <i class="fas fa-edit me-1"></i>Editar Perfil
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h3>Saldo Actual</h3>
+                    <h1 class="display-4">${{ perfil.saldo|floatformat:2 }}</h1>
+                    <p class="text-muted">Saldo bloqueado: ${{ perfil.saldo_bloqueado|floatformat:2 }}</p>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#agregarSaldoModal">
+                        Agregar Saldo
+                    </button>
+                    <!-- Agregar este botón donde quieras que aparezca, por ejemplo, junto al botón de agregar saldo -->
+                    <button type="button" class="btn btn-info ms-2" data-bs-toggle="modal" data-bs-target="#agregarMetodoPagoModal">
+                        <i class="fas fa-credit-card"></i> Agregar Método de Pago
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resto del perfil actual -->
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <!-- Contenido existente del perfil -->
+                    {% if perfil.incluir_pago %}
+                    <hr>
+                    <div class="row mb-3">
+                        <div class="col-sm-3">
+                            <p class="mb-0">Información de pago</p>
+                        </div>
+                        <div class="col-sm-9">
+                            <p class="text-muted mb-0">
+                                {{ perfil.marca_tarjeta }} terminada en: **** **** **** {{ perfil.numero_tarjeta|slice:"-4:" }}
+                            </p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Sección de Reservas y Pagos -->
+                    <hr>
+                    <h4>Mis Reservas Activas</h4>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Casa</th>
+                                    <th>Fecha Inicio</th>
+                                    <th>Tipo</th>
+                                    <th>Próximo Pago</th>
+                                    <th>Monto</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reserva in reservas_activas %}
+                                <tr>
+                                    <td>{{ reserva.casa.estilo.nombre }}</td>
+                                    <td>{{ reserva.fecha_inicio }}</td>
+                                    <td>{% if reserva.es_indefinida %}Mensual{% else %}Temporal{% endif %}</td>
+                                    <td>
+                                        {{ reserva.proximo_pago }}
+                                        <br>
+                                        <small class="text-muted" 
+                                                data-tiempo-restante="{{ reserva.tiempo_restante_pago|floatformat:1 }}"
+                                                data-nombre-casa="{{ reserva.casa.estilo.nombre }}">
+                                            <span class="contador-tiempo">
+                                                {% if reserva.estado != 'PAGADA' %}
+                                                    (Tiempo restante: {{ reserva.tiempo_restante_pago|floatformat:1 }} minutos)
+                                                {% endif %}
+                                            </span>
+                                        </small>
+                                        {% if reserva.tipo_pago_actual != 'COMPLETO' %}
+                                            <br>
+                                            <small class="text-info">
+                                                Cuota {{ reserva.cuotas_pagadas }}/{{ reserva.cuotas_totales }}
+                                            </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>${{ reserva.casa.monto|floatformat:2 }}</td>
+                                    <td>
+                                        {% if not reserva.tipo_plan %}
+                                            <form method="post" action="{% url 'properties:procesar_pago' reserva.id %}">
+                                                {% csrf_token %}
+                                                <select name="tipo_plan" class="form-select mb-2" required>
+                                                    <option value="">Seleccione un plan</option>
+                                                    <option value="DIARIO">Diario (${{ reserva.casa.monto_diario|floatformat:2 }})</option>
+                                                    <option value="MENSUAL_CON_SERVICIOS">Mensual con servicios (${{ reserva.casa.monto|floatformat:2 }})</option>
+                                                    <option value="MENSUAL_SIN_SERVICIOS">Mensual sin servicios (${{ reserva.casa.monto_sin_servicios|floatformat:2 }})</option>
+                                                </select>
+                                                <button type="submit" class="btn btn-primary btn-sm">Seleccionar Plan</button>
+                                            </form>
+                                        {% else %}
+                                            <form method="post" action="{% url 'properties:procesar_pago' reserva.id %}">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                    Pagar Cuota {{ reserva.cuotas_pagadas|add:1 }}/{{ reserva.cuotas_totales }}
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No tienes reservas activas</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Reemplazar las líneas 28-40 con esto -->
+                    <hr>
+                    <div class="row mb-3">
+                        <div class="col-sm-3">
+                            <p class="mb-0">Métodos de pago</p>
+                        </div>
+                        <div class="col-sm-9">
+                            {% for metodo in perfil.metodos_pago.all %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    {% if metodo.es_principal %}
+                                    <span class="badge bg-primary me-2">Principal</span>
+                                    {% endif %}
+                                    {{ metodo.marca_tarjeta }} terminada en: **** **** **** {{ metodo.numero_tarjeta|slice:"-4:" }}
+                                </div>
+                                <div>
+                                    {% if not metodo.es_principal %}
+                                    <a href="{% url 'accounts:establecer_metodo_pago_principal' metodo.id %}" 
+                                       class="btn btn-sm btn-outline-primary">Hacer Principal</a>
+                                    {% endif %}
+                                    <a href="{% url 'accounts:eliminar_metodo_pago' metodo.id %}" 
+                                       class="btn btn-sm btn-outline-danger">Eliminar</a>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-muted mb-0">No hay métodos de pago registrados</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Agregar después de la línea 175 -->
+                    <hr>
+                    <div class="row mb-3">
+                        <div class="col-sm-3">
+                            <p class="mb-0">Usuarios Adicionales</p>
+                        </div>
+                        <div class="col-sm-9">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5>Usuarios vinculados a tu cuenta</h5>
+                                <a href="{% url 'accounts:gestionar_usuarios_adicionales' %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-user-plus"></i> Gestionar Usuarios
+                                </a>
+                            </div>
+                            {% if usuarios_adicionales %}
+                                <div class="list-group">
+                                    {% for relacion in usuarios_adicionales %}
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="fas fa-user me-2"></i>
+                                                {{ relacion.usuario_adicional.get_full_name }}
+                                                <small class="text-muted">(@{{ relacion.usuario_adicional.username }})</small>
+                                            </div>
+                                            <small class="text-muted">
+                                                Agregado el {{ relacion.fecha_asignacion|date:"d/m/Y" }}
+                                            </small>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No tienes usuarios adicionales vinculados a tu cuenta.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar Saldo -->
+<div class="modal fade" id="agregarSaldoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Agregar Saldo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formAgregarSaldo" method="post" action="{% url 'accounts:agregar_saldo' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="metodo_pago" class="form-label">Método de Pago</label>
+                        <select class="form-control" id="metodo_pago" name="metodo_pago" required>
+                            {% for metodo in perfil.metodos_pago.all %}
+                                <option value="{{ metodo.id }}" {% if metodo.es_principal %}selected{% endif %}>
+                                    {{ metodo.marca_tarjeta }} - **** {{ metodo.numero_tarjeta|slice:"-4:" }}
+                                    {% if metodo.es_principal %}(Principal){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        {% if not perfil.metodos_pago.exists %}
+                            <div class="form-text text-danger">
+                                Debe agregar al menos un método de pago antes de poder recargar saldo.
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="monto" class="form-label">Monto a agregar</label>
+                        <input type="number" class="form-control" id="monto" name="monto" min="1" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cuotas" class="form-label">Número de cuotas</label>
+                        <select class="form-control" id="cuotas" name="cuotas">
+                            <option value="1">1 cuota</option>
+                            <option value="3">3 cuotas</option>
+                            <option value="6">6 cuotas</option>
+                            <option value="12">12 cuotas</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Confirmar Pago</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Agregar Método de Pago -->
+<div class="modal fade" id="agregarMetodoPagoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Agregar Método de Pago</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formMetodoPago" method="post" action="{% url 'accounts:agregar_metodo_pago' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="marca_tarjeta" class="form-label">Marca de Tarjeta</label>
+                        <select class="form-control" id="marca_tarjeta" onchange="actualizarNumeroTarjeta()">
+                            <option value="">Seleccione una marca</option>
+                            <option value="1">Visca</option>
+                            <option value="2">MasterChef</option>
+                            <option value="3">AmericanCity</option>
+                            <option value="5">TicaPay</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nombre_tarjetahabiente" class="form-label">Nombre del Tarjetahabiente</label>
+                        <input type="text" class="form-control" id="nombre_tarjetahabiente" name="nombre_tarjetahabiente" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="numero_tarjeta" class="form-label">Número de Tarjeta</label>
+                        <input type="text" class="form-control" id="numero_tarjeta" name="numero_tarjeta" 
+                               pattern="\d{16}" maxlength="16" required>
+                        <div class="form-text">Debe contener exactamente 16 dígitos</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fecha_validez" class="form-label">Fecha de Validez</label>
+                        <input type="date" class="form-control" id="fecha_validez" name="fecha_validez" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="numero_verificador" class="form-label">Número Verificador</label>
+                        <input type="text" class="form-control" id="numero_verificador" name="numero_verificador" 
+                               pattern="\d{4}" maxlength="4" required>
+                        <div class="form-text">4 dígitos</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Guardar Método de Pago</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación de Pago -->
+<div class="modal fade" id="confirmarPagoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Pago de Renta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Monto total a pagar: $<span id="montoPago"></span></p>
+                <p>Saldo actual: $<span id="saldoActual"></span></p>
+                
+                <div class="form-group mb-3">
+                    <label for="tipoPago">Tipo de Pago:</label>
+                    <select class="form-control" id="tipoPago" onchange="calcularCuotas()">
+                        <option value="completo">Pago Completo</option>
+                        <option value="semanal">Pago Semanal</option>
+                        <option value="diario">Pago Diario</option>
+                    </select>
+                </div>
+                
+                <div id="infoCuotas" style="display: none;">
+                    <p>Número de cuotas: <span id="numeroCuotas"></span></p>
+                    <p>Monto por cuota: $<span id="montoCuota"></span></p>
+                </div>
+            </div>
+            
+
+
+
+<script>
+function actualizarNumeroTarjeta() {
+    const marcaSelect = document.getElementById('marca_tarjeta');
+    const numeroTarjetaInput = document.getElementById('numero_tarjeta');
+    const primerDigito = marcaSelect.value;
+    
+    if (primerDigito) {
+        // Si hay un número existente, mantener los últimos 15 dígitos
+        const numerosActuales = numeroTarjetaInput.value.slice(1);
+        numeroTarjetaInput.value = primerDigito + numerosActuales;
+    }
+    
+    // Actualizar el patrón para asegurar que comience con el dígito seleccionado
+    if (primerDigito) {
+        numeroTarjetaInput.pattern = `${primerDigito}\\d{15}`;
+    } else {
+        numeroTarjetaInput.pattern = "\\d{16}";
+    }
+}
+
+// Validación adicional para el número de tarjeta
+document.getElementById('numero_tarjeta').addEventListener('input', function(e) {
+    const marcaSelect = document.getElementById('marca_tarjeta');
+    if (this.value.length > 0 && this.value[0] !== marcaSelect.value) {
+        marcaSelect.value = this.value[0];
+    }
+});
+
+function calcularCuotas() {
+    const tipoPago = document.getElementById('tipoPago').value;
+    const monto = parseFloat(document.getElementById('montoPago').textContent);
+    const infoCuotas = document.getElementById('infoCuotas');
+    const numeroCuotas = document.getElementById('numeroCuotas');
+    const montoCuota = document.getElementById('montoCuota');
+    
+    document.getElementById('tipoPagoInput').value = tipoPago;
+    
+    if (tipoPago === 'completo') {
+        infoCuotas.style.display = 'none';
+        return;
+    }
+    
+    let numCuotas;
+    if (tipoPago === 'semanal') {
+        numCuotas = 4; // 4 semanas
+    } else {
+        numCuotas = 30; // 30 días
+    }
+    
+    const montoPorCuota = (monto / numCuotas).toFixed(2);
+    numeroCuotas.textContent = numCuotas;
+    montoCuota.textContent = montoPorCuota;
+    infoCuotas.style.display = 'block';
+}
+
+// Almacenar el ID del intervalo globalmente
+let contadorInterval;
+
+function actualizarContadores() {
+    document.querySelectorAll('.contador-tiempo').forEach(contador => {
+        const small = contador.closest('small');
+        let tiempoRestante = parseFloat(small.dataset.tiempoRestante);
+        const nombreCasa = small.dataset.nombreCasa;
+        const reservaId = small.dataset.reservaId;
+        
+        if (tiempoRestante <= 0) {
+            const fila = contador.closest('tr');
+            
+            // Hacer una petición AJAX para actualizar el estado de la casa
+            fetch('/properties/procesar_pago/' + reservaId + '/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ expirada: true })
+            });
+            
+            fila.remove();
+            
+            const mensajeMostrado = sessionStorage.getItem(`mensaje_${nombreCasa}`);
+            if (!mensajeMostrado) {
+                const mensaje = `Tu reserva de la casa ${nombreCasa} ha expirado`;
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-danger mt-3';
+                alertDiv.textContent = mensaje;
+                document.querySelector('.table-responsive').before(alertDiv);
+                sessionStorage.setItem(`mensaje_${nombreCasa}`, 'true');
+                setTimeout(() => alertDiv.remove(), 5000);
+            }
+        } else {
+            tiempoRestante -= (1/60);
+            small.dataset.tiempoRestante = tiempoRestante;
+            contador.textContent = `(Tiempo restante: ${Math.max(0, tiempoRestante).toFixed(1)} minutos)`;
+        }
+    });
+}
+
+// Limpiar el intervalo anterior si existe
+if (window.contadorInterval) {
+    clearInterval(window.contadorInterval);
+}
+
+// Iniciar el contador y actualizarlo cada segundo
+window.contadorInterval = setInterval(actualizarContadores, 1000);
+actualizarContadores();
+
+// Función para reiniciar el temporizador después de un pago
+function reiniciarTemporizador(nombreCasa) {
+    const small = document.querySelector(`small[data-nombre-casa="${nombreCasa}"]`);
+    if (small) {
+        small.dataset.tiempoRestante = "5.0";
+    }
+}
+
+// Escuchar el evento de pago exitoso
+document.querySelectorAll('form[action^="/properties/procesar_pago/"]').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        const nombreCasa = this.closest('tr').querySelector('td').textContent;
+        
+        // Usar setTimeout para asegurarnos de que el pago se procesó
+        setTimeout(() => {
+            if (!document.querySelector('.alert-danger')) {  // Si no hay mensaje de error
+                reiniciarTemporizador(nombreCasa);
+            }
+        }, 500);
+    });
+});
+
+
+// Mantener la función existente de actualizarEstadoPagos
+setInterval(actualizarEstadoPagos, 30000);
+</script>
+
+{% endblock %}
+
+
+
+
+
+
+
+
+
+

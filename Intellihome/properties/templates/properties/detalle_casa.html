@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle de Casa - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8">
+            <div id="carouselFotos" class="carousel slide mb-4" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    {% for foto in casa.fotocasa_set.all %}
+                    <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                        <img src="{{ foto.imagen.url }}" class="d-block w-100" alt="Foto {{ forloop.counter }}" style="height: 400px; object-fit: cover;">
+                    </div>
+                    {% endfor %}
+                </div>
+                <button class="carousel-control-prev" type="button" data-bs-target="#carouselFotos" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Anterior</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#carouselFotos" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Siguiente</span>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <h2>{{ casa.estilo.nombre }}</h2>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Detalles</h5>
+                    <ul class="list-unstyled">
+                        <li><strong>Capacidad:</strong> {{ casa.capacidad }} personas</li>
+                        <li><strong>Habitaciones:</strong> {{ casa.habitaciones }}</li>
+                        <li><strong>Baños:</strong> {{ casa.banos }}</li>
+                        <li><strong>Fecha de registro:</strong> {{ casa.fecha_registro|date:"d/m/Y" }}</li>
+                        <li><strong>Latitud:</strong> {{ casa.latitud }}</li>
+                        <li><strong>Longitud:</strong> {{ casa.longitud }}</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Amenidades</h5>
+                    <ul>
+                        {% for amenidad in casa.amenidades.split|slice:":-1" %}
+                        <li>{{ amenidad|capfirst }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Planes de Pago</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <strong>Mensual con servicios:</strong> 
+                            ${{ casa.monto|floatformat:2 }}
+                        </li>
+                        <li class="mb-2">
+                            <strong>Mensual sin servicios:</strong> 
+                            ${{ casa.monto_sin_servicios|floatformat:2 }}
+                        </li>
+                        <li class="mb-2">
+                            <strong>Diario con servicios:</strong> 
+                            ${{ casa.monto_diario|floatformat:2 }}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Características</h5>
+                    <p>{{ casa.caracteristicas }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        {% if is_owner %}
+            <a href="{% url 'properties:lista_casas' %}" class="btn btn-secondary">Volver a mis casas</a>
+        {% else %}
+            <a href="{% url 'properties:casas_disponibles' %}" class="btn btn-secondary">Volver a casas disponibles</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

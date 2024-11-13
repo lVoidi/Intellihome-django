@@ -42,12 +42,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'accounts',
-    'houses',
-    'devices',
-    'rentals',
     'payments',
     'reports',
+    'properties.apps.PropertiesConfig',
+    'devices.apps.DevicesConfig',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -57,7 +57,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'accounts.middleware.SystemStatusMiddleware',
+    'accounts.middleware.AdminPasswordCheckMiddleware',
 ]
+
 
 ROOT_URLCONF = 'Intellihome.urls'
 
@@ -129,10 +132,22 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Configuración de archivos media
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_REDIRECT_URL = 'accounts:login'
+LOGIN_URL = 'accounts:login'
+LOGOUT_REDIRECT_URL = 'accounts:login'
+
+CELERY_BEAT_SCHEDULE = {
+    'limpiar-reservas-temporales': {
+        'task': 'properties.tasks.limpiar_reservas_temporales',
+        'schedule': 60.0,  
+    },
+}

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Casas Disponibles - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    {% if messages %}
+    <div class="row mb-4">
+        <div class="col-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <h2 class="mb-4">Casas Disponibles</h2>
+       
+    
+    <!-- Formulario de búsqueda por fechas -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-5">
+                    {{ form.fecha_inicio.label_tag }}
+                    {{ form.fecha_inicio }}
+                </div>
+                <div class="col-md-5">
+                    {{ form.fecha_fin.label_tag }}
+                    {{ form.fecha_fin }}
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Buscar</button>
+                </div>
+                {% if form.errors %}
+                    <div class="col-12">
+                        <div class="alert alert-danger">
+                            {{ form.errors }}
+                        </div>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+    
+    <div class="row">
+        {% for casa in casas %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 {% if casa.id in casas_no_disponibles %}opacity-50{% endif %}">
+                {% if casa.fotocasa_set.first %}
+                <img src="{{ casa.fotocasa_set.first.imagen.url }}" class="card-img-top" alt="Foto de la casa" style="height: 200px; object-fit: cover;">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ casa.estilo.nombre }}</h5>
+                    <p class="card-text">
+                        <strong>Capacidad:</strong> {{ casa.capacidad }} personas<br>
+                        <strong>Habitaciones:</strong> {{ casa.habitaciones }}<br>
+                        <strong>Baños:</strong> {{ casa.banos }}<br>
+                        <strong>Monto Mensual:</strong> ${{ casa.monto }}<br>
+                        <strong>Monto sin servicios:</strong> ${{ casa.monto_sin_servicios|floatformat:2 }}<br>
+                        <strong>Monto Diario:</strong> ${{ casa.monto_diario|floatformat:2 }}
+                    </p>
+                    <div class="d-grid gap-2">
+                        {% if casa.id in casas_no_disponibles %}
+                            <button class="btn btn-secondary" disabled>No disponible para estas fechas</button>
+                        {% else %}
+                            <a href="{% url 'properties:detalle_casa' casa.id %}" class="btn btn-primary mb-2">Ver Detalles</a>
+                            {% if is_authenticated and not is_admin %}
+                                <a href="{% url 'properties:reservar_casa' casa.id %}" class="btn btn-success">Alquilar Casa</a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                No hay casas disponibles en este momento.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

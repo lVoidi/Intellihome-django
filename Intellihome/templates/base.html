@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
   <head>
@@ -15,61 +16,90 @@
       rel="stylesheet"
     />
 
-    <link rel="icon" href="{% static 'icons/intellihome.ico' %}" />
+    
     {% load static %}
+    <link rel="icon" href="{% static 'icons/intellihome.ico' %}" />
     <link href="{% static 'css/base.css' %}" rel="stylesheet" />
     {% block head %}{% endblock %}
   </head>
   <body class="d-flex flex-column min-vh-100">
+
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-      <div class="container-fluid">
-        <a class="navbar-brand" href="{% url 'home' %}">IntelliHome</a>
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container">
+        <a class="navbar-brand" href="{% url 'properties:casas_disponibles' %}">IntelliHome</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
+          <ul class="navbar-nav me-auto">
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'home' %}">Inicio</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'houses:list' %}">Casas</a>
+              {% if user.is_authenticated %}
+                {% if user.is_superuser %}
+                  <a class="nav-link" href="{% url 'accounts:admin_home' %}">Inicio</a>
+                {% elif user.is_staff %}
+                  <a class="nav-link" href="{% url 'accounts:staff_home' %}">Inicio</a>
+                {% else %}
+                  <a class="nav-link" href="{% url 'accounts:user_home' %}">Inicio</a>
+                {% endif %}
+              {% else %}
+                <a class="nav-link" href="{% url 'properties:casas_disponibles' %}">Inicio</a>
+              {% endif %}
             </li>
             {% if user.is_authenticated %}
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'accounts:profile' %}">Perfil</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'accounts:logout' %}"
-                >Cerrar sesión</a
-              >
-            </li>
+              <li class="nav-item">
+                {% if user.is_superuser %}
+                  <a class="nav-link" href="/admin/">Panel de control</a>
+                {% elif user.is_staff %}
+                  <a class="nav-link" href="{% url 'accounts:staff_home' %}">
+                    <i class="fas fa-cogs"></i> Panel de Administración
+                  </a>
+                {% else %}
+                  <a class="nav-link" href="{% url 'accounts:profile' %}">Perfil</a>
+                {% endif %}
+              </li>
+              <!-- Nuevo enlace para Dispositivos IoT -->
+              {% if not user.is_superuser and not user.is_staff %}
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'devices:mis_dispositivos' %}">
+                  <i class="fas fa-microchip"></i> Mis Dispositivos
+                </a>
+              </li>
+              {% endif %}
+            {% endif %}
+          </ul>
+          <ul class="navbar-nav">
+            {% if user.is_authenticated %}
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'properties:casas_disponibles' %}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Cerrar Sesión</a>
+                <form id="logout-form" action="{% url 'accounts:logout' %}" method="POST" style="display: none;">
+                  {% csrf_token %}
+                </form>
+              </li>
             {% else %}
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'accounts:login' %}"
-                >Iniciar sesión</a
-              >
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'accounts:register' %}"
-                >Registrarse</a
-              >
-            </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'accounts:login' %}">Iniciar Sesión</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{% url 'accounts:register' %}">Registrarse</a>
+              </li>
             {% endif %}
           </ul>
         </div>
       </div>
     </nav>
 
+    <!-- Mensajes -->
+    {% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
     <!-- Contenido principal -->
     <main class="container my-4 flex-grow-1">
       {% block content %} {% endblock %}
@@ -79,7 +109,7 @@
     <footer class="bg-light py-3 mt-auto">
       <div class="container text-center">
         <p class="mb-0">
-          &copy; 2023 IntelliHome. Todos los derechos reservados.
+          &copy; 2024 IntelliHome. Todos los derechos reservados.
         </p>
       </div>
     </footer>

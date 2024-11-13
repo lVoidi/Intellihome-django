@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Agregar Nueva Casa - IntelliHome{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Agregar Nueva Casa</h2>
+            <form method="post" enctype="multipart/form-data" id="casaForm">
+                {% csrf_token %}
+                
+                <!-- Mapa y coordenadas -->
+                <div class="mb-3">
+                    <label class="form-label">Ubicación de la Casa</label>
+                    <div id="map" style="height: 400px;" class="mb-2"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="id_latitud" class="form-label">Latitud</label>
+                            {{ form.latitud }}
+                            <small class="text-muted">{{ form.latitud.help_text }}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_longitud" class="form-label">Longitud</label>
+                            {{ form.longitud }}
+                            <small class="text-muted">{{ form.longitud.help_text }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resto del formulario -->
+                {% for field in form %}
+                    {% if field.name == 'fotos' %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label">
+                            {{ field.label }}
+                        </label>
+                        <input type="file" name="{{ field.name }}" 
+                               class="form-control" 
+                               id="{{ field.id_for_label }}" 
+                               multiple 
+                               accept="image/*"
+                               required>
+                        <small class="text-muted">{{ field.help_text }}</small>
+                        {% if field.errors %}
+                        <div class="alert alert-danger">
+                            {{ field.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label">
+                            {{ field.label }}
+                        </label>
+                        {{ field }}
+                        {% if field.help_text %}
+                        <small class="text-muted">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% if field.errors %}
+                        <div class="alert alert-danger">
+                            {{ field.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Guardar Casa</button>
+                    <a href="{% url 'properties:configuracion' %}" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Inicializar mapa
+    var map = L.map('map').setView([9.9281, -84.0907], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    var marker;
+
+    // Función para actualizar el marcador
+    function updateMarker(lat, lng) {
+        if (marker) {
+            map.removeLayer(marker);
+        }
+        marker = L.marker([lat, lng]).addTo(map);
+        map.setView([lat, lng], 13);
+    }
+
+    // Evento click en el mapa
+    map.on('click', function(e) {
+        var lat = parseFloat(e.latlng.lat).toFixed(6);
+        var lng = parseFloat(e.latlng.lng).toFixed(6);
+        
+        document.getElementById('id_latitud').value = lat;
+        document.getElementById('id_longitud').value = lng;
+        
+        updateMarker(lat, lng);
+    });
+
+    // Eventos para los campos de entrada
+    document.getElementById('id_latitud').addEventListener('change', function() {
+        var lat = parseFloat(this.value);
+        var lng = parseFloat(document.getElementById('id_longitud').value);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            updateMarker(lat, lng);
+        }
+    });
+
+    document.getElementById('id_longitud').addEventListener('change', function() {
+        var lat = parseFloat(document.getElementById('id_latitud').value);
+        var lng = parseFloat(this.value);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            updateMarker(lat, lng);
+        }
+    });
+
+    // Validación del formulario
+    document.getElementById('casaForm').addEventListener('submit', function(e) {
+        var lat = parseFloat(document.getElementById('id_latitud').value);
+        var lng = parseFloat(document.getElementById('id_longitud').value);
+        
+        if (isNaN(lat) || isNaN(lng)) {
+            e.preventDefault();
+            alert('Por favor, ingrese coordenadas válidas o seleccione una ubicación en el mapa');
+        }
+    });
+</script>
+{% endblock %}

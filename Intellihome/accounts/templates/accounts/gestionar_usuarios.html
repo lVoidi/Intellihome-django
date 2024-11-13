@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Gestión de Usuarios</h2>
+    
+    <!-- Usuarios Activos -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>Usuarios Activos</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Email</th>
+                            <th>Fecha Registro</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for perfil in usuarios_activos %}
+                        <tr>
+                            <td>{{ perfil.user.username }}</td>
+                            <td>{{ perfil.user.email }}</td>
+                            <td>{{ perfil.user.date_joined|date }}</td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#deshabilitarModal{{ perfil.user.id }}">
+                                    Deshabilitar
+                                </button>
+                            </td>
+                        </tr>
+                        
+                        <!-- Modal Deshabilitar -->
+                        <div class="modal fade" id="deshabilitarModal{{ perfil.user.id }}">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Deshabilitar Usuario</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form method="post" action="{% url 'accounts:deshabilitar_usuario' perfil.user.id %}">
+                                        {% csrf_token %}
+                                        <div class="modal-body">
+                                            <div class="form-group">
+                                                <label>Razón:</label>
+                                                <textarea name="razon" class="form-control" required></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-danger">Confirmar</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Usuarios Deshabilitados -->
+    <div class="card">
+        <div class="card-header">
+            <h4>Usuarios Deshabilitados</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Email</th>
+                            <th>Fecha Deshabilitado</th>
+                            <th>Razón</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for perfil in usuarios_deshabilitados %}
+                        <tr>
+                            <td>{{ perfil.user.username }}</td>
+                            <td>{{ perfil.user.email }}</td>
+                            <td>{{ perfil.fecha_deshabilitado|date }}</td>
+                            <td>{{ perfil.razon_deshabilitado }}</td>
+                            <td>
+                                <form method="post" action="{% url 'accounts:habilitar_usuario' perfil.user.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-success btn-sm">Habilitar</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

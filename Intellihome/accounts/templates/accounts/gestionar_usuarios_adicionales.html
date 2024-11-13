@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestionar Usuarios Adicionales - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Gestionar Usuarios Adicionales</h2>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <h3>Usuarios Adicionales Actuales</h3>
+            <div class="list-group">
+                {% for relacion in usuarios_adicionales %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ relacion.usuario_adicional.username }}
+                    <a href="{% url 'accounts:eliminar_usuario_adicional' relacion.usuario_adicional.id %}" 
+                       class="btn btn-danger btn-sm">Eliminar</a>
+                </div>
+                {% empty %}
+                <div class="alert alert-info">
+                    No tienes usuarios adicionales asignados.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <h3>Usuarios Disponibles</h3>
+            <div class="list-group">
+                {% for usuario in usuarios_disponibles %}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ usuario.username }}
+                    <a href="{% url 'accounts:agregar_usuario_adicional' usuario.id %}" 
+                       class="btn btn-success btn-sm">Agregar</a>
+                </div>
+                {% empty %}
+                <div class="alert alert-info">
+                    No hay usuarios disponibles para agregar.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

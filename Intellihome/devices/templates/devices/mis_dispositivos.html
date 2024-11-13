@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Mis Dispositivos - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4">Mis Dispositivos IoT</h2>
+    
+    {% if dispositivos_por_casa %}
+        {% for casa, dispositivos in dispositivos_por_casa.items %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>{{ casa.estilo.nombre }}</h4>
+            </div>
+            <div class="card-body">
+                {% if dispositivos %}
+                <div class="row">
+                    {% for dispositivo in dispositivos %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ dispositivo.nombre }}</h5>
+                                <p class="card-text">
+                                    <strong>Tipo:</strong> {{ dispositivo.tipo.nombre }}<br>
+                                    <strong>Estado:</strong> 
+                                    <span class="badge {% if dispositivo.estado %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ dispositivo.estado|yesno:"Encendido,Apagado" }}
+                                    </span>
+                                </p>
+                                <button class="btn btn-primary btn-sm toggle-device" 
+                                        data-device-id="{{ dispositivo.id }}"
+                                        onclick="probarDispositivo({{ dispositivo.id }})"
+                                        data-current-state="{{ dispositivo.estado|yesno:'true,false' }}">
+                                    <i class="fas fa-power-off me-1"></i>
+                                    {{ dispositivo.estado|yesno:"Apagar,Encender" }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-center mb-0">No hay dispositivos registrados para esta casa.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="alert alert-info">
+        No tienes acceso a ningún dispositivo IoT en este momento.
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 
+
+{% block extra_js %}
+<script>
+    function probarDispositivo(dispositivoId) {
+        fetch(`/devices/probar/${dispositivoId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Dispositivo probado exitosamente');
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error al probar el dispositivo');
+            console.error('Error:', error);
+        });
+    }
+</script>
+{% endblock %}

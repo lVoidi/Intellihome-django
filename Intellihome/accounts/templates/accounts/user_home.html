@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Inicio - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Casas Disponibles</h2>
+    
+    <div class="row">
+        {% for casa in casas %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                {% if casa.fotocasa_set.first %}
+                <img src="{{ casa.fotocasa_set.first.imagen.url }}" class="card-img-top" alt="Foto de la casa" style="height: 200px; object-fit: cover;">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ casa.estilo.nombre }}</h5>
+                    <p class="card-text">
+                        <strong>Capacidad:</strong> {{ casa.capacidad }} personas<br>
+                        <strong>Habitaciones:</strong> {{ casa.habitaciones }}<br>
+                        <strong>Baños:</strong> {{ casa.banos }}<br>
+                        <strong>Monto Mensual:</strong> ${{ casa.monto }}<br>
+                        <strong>Monto sin servicios:</strong> ${{ casa.monto_sin_servicios|floatformat:2 }}<br>
+                        <strong>Monto Diario:</strong> ${{ casa.monto_diario|floatformat:2 }}
+                    </p>
+                    <div class="d-grid">
+                        <a href="{% url 'properties:detalle_casa' casa.id %}" class="btn btn-primary">
+                            Ver Detalles
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                No hay casas disponibles en este momento.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

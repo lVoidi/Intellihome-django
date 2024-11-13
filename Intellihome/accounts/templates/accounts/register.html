@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Registro - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card mt-5">
+                <div class="card-header">
+                    <h2 class="text-center">Registro de Usuario</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {{ field.as_widget|safe }}
+                            {% if field.errors %}
+                            <div class="alert alert-danger">
+                                {{ field.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Registrarse</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Cambio de Disponibilidad - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Confirmar Cambio de Disponibilidad</h5>
+                    <p class="card-text">
+                        ¿Está seguro que desea {{ accion }} la disponibilidad de esta casa?
+                    </p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn {% if accion == 'activar' %}btn-success{% else %}btn-danger{% endif %}">
+                            Confirmar
+                        </button>
+                        <a href="{% url 'properties:gestionar_disponibilidad' %}" class="btn btn-secondary">
+                            Cancelar
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

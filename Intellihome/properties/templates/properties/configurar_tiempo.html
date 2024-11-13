@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Configurar Tiempo Simulado - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Configuración del Tiempo Simulado</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="minutos_por_mes" class="form-label">Minutos por mes simulado</label>
+                            <input type="number" class="form-control" id="minutos_por_mes" 
+                                   name="minutos_por_mes" value="{{ config.minutos_por_mes }}" min="1" required>
+                            <small class="text-muted">
+                                Cada {{ config.minutos_por_mes }} minutos representan un mes en el sistema
+                            </small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="minutos_reserva_temporal" class="form-label">Minutos para reserva temporal</label>
+                            <input type="number" class="form-control" id="minutos_reserva_temporal" 
+                                   name="minutos_reserva_temporal" value="{{ config.minutos_reserva_temporal }}" min="1" required>
+                            <small class="text-muted">
+                                Tiempo límite para confirmar una reserva antes de que expire
+                            </small>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Guardar Configuración</button>
+                            <a href="{% url 'properties:configuracion_admin' %}" class="btn btn-secondary">Volver</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

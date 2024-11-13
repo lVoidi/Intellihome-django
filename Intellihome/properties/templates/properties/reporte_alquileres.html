@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Reporte de Alquileres - IntelliHome{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Reporte de Alquileres</h2>
+    
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Mes</label>
+                    <select name="mes" class="form-select">
+                        {% for num, nombre in meses %}
+                            <option value="{{ num }}" {% if num == mes_seleccionado %}selected{% endif %}>
+                                {{ nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Año</label>
+                    <select name="anio" class="form-select">
+                        {% for anio in anios %}
+                            <option value="{{ anio }}" {% if anio == anio_seleccionado %}selected{% endif %}>
+                                {{ anio }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">Filtrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Tabla de Resultados -->
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Casa</th>
+                    <th>Inquilino</th>
+                    <th>Fecha Inicio</th>
+                    <th>Duración</th>
+                    <th>Monto</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reserva in reservas %}
+                <tr>
+                    <td>
+                        <strong>{{ reserva.casa.estilo.nombre }}</strong>
+                        <br>
+                        <small class="text-muted">ID: {{ reserva.casa.id }}</small>
+                    </td>
+                    <td>
+                        {{ reserva.usuario.get_full_name }}
+                        <br>
+                        <small class="text-muted">@{{ reserva.usuario.username }}</small>
+                    </td>
+                    <td>{{ reserva.fecha_inicio }}</td>
+                    <td>
+                        {% if reserva.es_indefinida %}
+                            Indefinida
+                        {% else %}
+                            {{ reserva.fecha_fin|timeuntil:reserva.fecha_inicio }}
+                        {% endif %}
+                    </td>
+                    <td>${{ reserva.casa.monto|floatformat:2 }}</td>
+                    <td>
+                        <span class="badge bg-success">Activa</span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">
+                        No hay alquileres registrados para este período
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
