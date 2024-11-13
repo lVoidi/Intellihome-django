@@ -17,24 +17,46 @@
     
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="display-4">{{ titulo }}</h1>
-                <div>
-                    <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#limpiarInquilinosModal">
+            <div class="mb-4">
+                <h1 class="display-4 text-center mb-4">{{ titulo }}</h1>
+                <!-- Botones para desktop -->
+                <div class="d-none d-md-flex justify-content-between flex-wrap gap-2">
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#limpiarInquilinosModal">
                         <i class="fas fa-trash"></i> Limpiar Inquilinos
                     </button>
-                    <a href="{% url 'accounts:gestionar_usuarios' %}" class="btn btn-warning me-2">
+                    <a href="{% url 'accounts:gestionar_usuarios' %}" class="btn btn-warning">
                         <i class="fas fa-users"></i> Gestionar Usuarios
                     </a>
-                    <a href="{% url 'properties:reporte_alquileres' %}" class="btn btn-info me-2">
+                    <a href="{% url 'properties:reporte_alquileres' %}" class="btn btn-info">
                         <i class="fas fa-chart-bar"></i> Reporte Alquileres
                     </a>
-                    <a href="{% url 'properties:configuracion' %}" class="btn btn-primary me-2">
-                        Ventana de Configuración
+                    <a href="{% url 'properties:configuracion' %}" class="btn btn-primary">
+                        <i class="fas fa-cog"></i> Configuración
                     </a>
                     <a href="{% url 'properties:lista_casas' %}" class="btn btn-success">
-                        Casas Registradas
+                        <i class="fas fa-home"></i> Casas Registradas
                     </a>
+                </div>
+                
+                <!-- Botones para móvil -->
+                <div class="d-md-none">
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-danger btn-lg" data-bs-toggle="modal" data-bs-target="#limpiarInquilinosModal">
+                            <i class="fas fa-trash"></i> Limpiar Inquilinos
+                        </button>
+                        <a href="{% url 'accounts:gestionar_usuarios' %}" class="btn btn-warning btn-lg">
+                            <i class="fas fa-users"></i> Gestionar Usuarios
+                        </a>
+                        <a href="{% url 'properties:reporte_alquileres' %}" class="btn btn-info btn-lg">
+                            <i class="fas fa-chart-bar"></i> Reporte Alquileres
+                        </a>
+                        <a href="{% url 'properties:configuracion' %}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-cog"></i> Configuración
+                        </a>
+                        <a href="{% url 'properties:lista_casas' %}" class="btn btn-success btn-lg">
+                            <i class="fas fa-home"></i> Casas Registradas
+                        </a>
+                    </div>
                 </div>
             </div>
             
@@ -70,4 +92,24 @@
         </div>
     </div>
 </div>
+
+<style>
+@media (max-width: 768px) {
+    .display-4 {
+        font-size: 2.5rem;
+    }
+    
+    .btn-lg {
+        padding: 0.75rem 1.25rem;
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .fas {
+        margin-right: 0.5rem;
+        width: 20px;
+        text-align: center;
+    }
+}
+</style>
 {% endblock %}
