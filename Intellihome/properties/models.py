@@ -113,14 +113,14 @@ class Reserva(models.Model):
     def calcular_monto_pago(self):
         if not self.tipo_plan:
             raise ValueError("Debe seleccionar un plan de pago primero")
-            
-        dias_totales = (self.fecha_fin - self.fecha_inicio).days
         
         if self.tipo_plan == 'DIARIO':
             return self.casa.monto_diario
         elif self.tipo_plan == 'MENSUAL_CON_SERVICIOS':
+            self.fecha_fin = self.fecha_inicio + timedelta(minutes=5)  # 5 minutos = 1 mes simulado
             return self.casa.monto
         else:  # MENSUAL_SIN_SERVICIOS
+            self.fecha_fin = self.fecha_inicio + timedelta(minutes=5)  # 5 minutos = 1 mes simulado
             return self.casa.monto_sin_servicios
             
     def calcular_cuotas_totales(self):
@@ -138,16 +138,13 @@ class Reserva(models.Model):
             return meses_completos
         
     def tiempo_restante_pago(self):
-        # Si ya está pagada completamente, no hay temporizador
-        if self.estado == 'PAGADA':
-            return 0
-            
-        minutos_limite = 5  # Establecemos 5 minutos fijos
+        minutos_limite = 5  # 5 minutos representan un mes en tiempo simulado
         
         # Usar la fecha de último pago si existe, sino usar fecha_reserva
         ultima_fecha = self.fecha_ultimo_pago if self.fecha_ultimo_pago else self.fecha_reserva
         tiempo_transcurrido = timezone.now() - ultima_fecha
         tiempo_restante = minutos_limite - (tiempo_transcurrido.total_seconds() / 60)
+        
         return max(0, tiempo_restante)
 
     class Meta:
@@ -158,10 +155,10 @@ class Reserva(models.Model):
         return f'Reserva de {self.casa.estilo.nombre} por {self.usuario.get_full_name()}'
 
     def esta_expirada(self):
-        if self.estado == 'PAGADA':
+        if self.estado not in ['PAGADA', 'CONFIRMADA']:
             return False
-            
-        minutos_limite = 5
+        
+        minutos_limite = 5  # 5 minutos representan un mes en tiempo simulado
         ultima_fecha = self.fecha_ultimo_pago if self.fecha_ultimo_pago else self.fecha_reserva
         tiempo_transcurrido = timezone.now() - ultima_fecha
         
@@ -169,6 +166,5 @@ class Reserva(models.Model):
             self.estado = 'NO_PAGADO'
             self.casa.disponible = True
             self.casa.save()
-            self.save()
             return True
         return False

@@ -291,23 +291,6 @@ def reporte_alquileres(request):
 def procesar_pago(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id, usuario=request.user)
     
-    # Verificar si la reserva está expirada o si se recibe la señal de expiración
-    if reserva.esta_expirada() or (request.method == "POST" and request.headers.get('Content-Type') == 'application/json'):
-        # Marcar la casa como disponible
-        casa = reserva.casa
-        casa.disponible = True
-        casa.save()
-        
-        # Eliminar la reserva en lugar de solo marcarla como cancelada
-        reserva.delete()
-        
-        # Si es una petición AJAX, devolver respuesta JSON
-        if request.headers.get('Content-Type') == 'application/json':
-            return JsonResponse({'status': 'success'})
-            
-        messages.error(request, "El tiempo para realizar el pago ha expirado")
-        return redirect('accounts:profile')
-    
     if request.method == "POST":
         if not reserva.tipo_plan:
             tipo_plan = request.POST.get('tipo_plan')
@@ -328,16 +311,11 @@ def procesar_pago(request, reserva_id):
         monto = Decimal(str(reserva.calcular_monto_pago()))
         
         if perfil.saldo >= monto:
-            perfil.saldo -= monto
-            perfil.save()
+            perfil.descontar_saldo(monto)
             
             reserva.cuotas_pagadas += 1
             reserva.fecha_ultimo_pago = timezone.now()
-            
-            if reserva.cuotas_pagadas >= reserva.cuotas_totales:
-                reserva.estado = 'PAGADA'
-            else:
-                reserva.estado = 'CONFIRMADA'
+            reserva.estado = 'PAGADA'  # Siempre marcar como PAGADA al procesar un pago
             reserva.save()
             
             messages.success(request, f"Pago procesado exitosamente. Cuota {reserva.cuotas_pagadas}/{reserva.cuotas_totales}. Monto pagado: ${monto}")

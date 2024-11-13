@@ -586,21 +586,22 @@ def profile(request):
     perfil = request.user.perfilusuario
     usuarios_adicionales = UsuarioAdicional.objects.filter(usuario_principal=request.user)
     
+    # Obtener todas las reservas activas (pagadas o confirmadas)
     reservas_activas = Reserva.objects.filter(
         usuario=request.user,
-        estado__in=['TEMPORAL', 'CONFIRMADA']
+        estado__in=['PAGADA', 'CONFIRMADA', 'TEMPORAL']
     ).select_related('casa__estilo')
     
-    # Filtrar las reservas expiradas
-    reservas_activas = [reserva for reserva in reservas_activas if not reserva.esta_expirada()]
-    
-    # Calcular tiempo restante para cada reserva
+    # Filtrar las reservas expiradas y calcular tiempo restante
+    reservas_vigentes = []
     for reserva in reservas_activas:
-        reserva.tiempo_restante = reserva.tiempo_restante_pago()
+        if not reserva.esta_expirada():
+            reserva.tiempo_restante = reserva.tiempo_restante_pago()
+            reservas_vigentes.append(reserva)
     
     context = {
         'perfil': perfil,
-        'reservas_activas': reservas_activas,
+        'reservas_activas': reservas_vigentes,
         'usuarios_adicionales': usuarios_adicionales,
     }
     return render(request, 'accounts/user_profile.html', context)
