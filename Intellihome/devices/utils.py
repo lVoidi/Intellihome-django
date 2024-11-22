@@ -2,7 +2,7 @@ import requests
 from django.conf import settings
 
 def notify_iot_server(action, device_data=None):
-    SERVER_URL = "http://192.168.18.182:5000/toggle"
+    SERVER_URL = "http://192.168.0.77:5000/toggle"
     
     try:
         if action == "toggle":
